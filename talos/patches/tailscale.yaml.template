@@ -1,0 +1,11 @@
+# Copy this file to tailscale.yaml and fill in your auth key.
+# tailscale.yaml is gitignored — never commit it.
+#
+# Generate a reusable auth key at: https://login.tailscale.com/admin/settings/keys
+# Use "Reusable: yes" and "Ephemeral: no" so the node persists across reboots.
+machine:
+  files:
+    - content: tskey-auth-REPLACE_ME
+      permissions: 0o600
+      path: /var/etc/tailscale/authkey
+      op: create
