@@ -3,6 +3,7 @@ set -euo pipefail
 
 TALOS_ENDPOINT="NODE_IP_PLACEHOLDER"
 GITEA_REPO="https://gitea.<tailnet>.ts.net/admin/talos-home.git"
+GITEA_RAW="https://gitea.<tailnet>.ts.net/admin/talos-home/raw/branch/master"
 REPO_DIR="$HOME/talos"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -65,11 +66,8 @@ mkdir -p ~/.talos
 if [[ -f ~/.talos/config ]]; then
   warn "~/.talos/config already exists, skipping (delete it first to overwrite)"
 else
-  echo ""
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  echo "  Paste your talosconfig from your password manager, then Ctrl+D"
-  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  cat > ~/.talos/config
+  info "Fetching talosconfig from repo..."
+  curl -sf "$GITEA_RAW/secrets/talosconfig" > ~/.talos/config
   success "talosconfig saved"
 fi
 
