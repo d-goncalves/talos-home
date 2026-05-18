@@ -11,6 +11,7 @@ metadata:
     gethomepage.dev/group: "Productivity"
     gethomepage.dev/icon: "mdi-file-document-outline"
     gethomepage.dev/href: "https://docmost.<tailnet>.ts.net"
+    gethomepage.dev/pod-selector: "app=docmost"
 spec:
   ingressClassName: tailscale
   rules:
