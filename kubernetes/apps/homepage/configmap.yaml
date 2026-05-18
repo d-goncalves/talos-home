@@ -37,15 +37,12 @@ data:
     - kubernetes:
         cluster:
           show: true
-          cpu: true
-          memory: true
+          cpu: false
+          memory: false
           showLabel: true
           label: talos
         nodes:
-          show: true
-          cpu: true
-          memory: true
-          showLabel: true
+          show: false
 
   services.yaml: |
     []

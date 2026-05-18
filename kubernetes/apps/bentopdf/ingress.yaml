@@ -11,6 +11,7 @@ metadata:
     gethomepage.dev/group: "Tools"
     gethomepage.dev/icon: "mdi-file-pdf-box"
     gethomepage.dev/href: "https://bentopdf.<tailnet>.ts.net"
+    gethomepage.dev/pod-selector: "app=bentopdf"
 spec:
   ingressClassName: tailscale
   rules:
