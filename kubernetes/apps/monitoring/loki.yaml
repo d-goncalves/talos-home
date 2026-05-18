@@ -46,6 +46,12 @@ spec:
     backend:
       replicas: 0
 
+    # Disable caches (not needed for single-node, saves memory)
+    chunksCache:
+      enabled: false
+    resultsCache:
+      enabled: false
+
     # Disable bundled Grafana agent/gateway
     gateway:
       enabled: false
