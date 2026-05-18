@@ -17,9 +17,25 @@ spec:
       containers:
         - name: homepage
           image: ghcr.io/gethomepage/homepage:latest
+          env:
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: homepage.<tailnet>.ts.net
           volumeMounts:
             - name: config
-              mountPath: /app/config
+              mountPath: /app/config/settings.yaml
+              subPath: settings.yaml
+            - name: config
+              mountPath: /app/config/kubernetes.yaml
+              subPath: kubernetes.yaml
+            - name: config
+              mountPath: /app/config/widgets.yaml
+              subPath: widgets.yaml
+            - name: config
+              mountPath: /app/config/services.yaml
+              subPath: services.yaml
+            - name: config
+              mountPath: /app/config/bookmarks.yaml
+              subPath: bookmarks.yaml
       volumes:
         - name: config
           configMap:
