@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitea-shared-storage-nfs
+  namespace: gitea
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs-gitea
+  resources:
+    requests:
+      storage: 10Gi
