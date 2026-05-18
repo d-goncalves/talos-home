@@ -39,24 +39,38 @@ spec:
       labels:
         app: affine
     spec:
+      initContainers:
+        - name: migration
+          image: ghcr.io/toeverything/affine:stable
+          command: ["sh", "-c", "node ./scripts/self-host-predeploy.js"]
+          env:
+            - name: DATABASE_URL
+              value: postgresql://affine:affine@affine-postgres:5432/affine
+            - name: REDIS_SERVER_HOST
+              value: affine-redis
+            - name: AFFINE_INDEXER_ENABLED
+              value: "false"
+          volumeMounts:
+            - name: config
+              mountPath: /root/.affine/config
+            - name: storage
+              mountPath: /root/.affine/storage
       containers:
         - name: affine
-          image: ghcr.io/toeverything/affine-graphql:stable
+          image: ghcr.io/toeverything/affine:stable
           ports:
             - containerPort: 3010
           env:
             - name: NODE_ENV
               value: production
-            - name: AFFINE_CONFIG_PATH
-              value: /root/.affine/config
             - name: DATABASE_URL
               value: postgresql://affine:affine@affine-postgres:5432/affine
             - name: REDIS_SERVER_HOST
               value: affine-redis
-            - name: AFFINE_SERVER_HOST
-              value: affine.<tailnet>.ts.net
-            - name: AFFINE_SERVER_HTTPS
-              value: "true"
+            - name: AFFINE_SERVER_EXTERNAL_URL
+              value: https://affine.<tailnet>.ts.net
+            - name: AFFINE_INDEXER_ENABLED
+              value: "false"
           volumeMounts:
             - name: config
               mountPath: /root/.affine/config
