@@ -19,10 +19,8 @@ spec:
           env:
             - name: ORIGIN
               value: https://adventurelog.<tailnet>.ts.net
-            - name: BACKEND_URL
+            - name: PUBLIC_SERVER_URL
               value: http://adventurelog-backend:8000
-            - name: PUBLIC_URL
-              value: https://adventurelog.<tailnet>.ts.net
 ---
 apiVersion: v1
 kind: Service
