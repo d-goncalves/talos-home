@@ -4,3 +4,4 @@ resources:
   - immich/
   - adventurelog/
   - monitoring/
+  - docmost/

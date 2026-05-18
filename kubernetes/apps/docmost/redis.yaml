@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: docmost-redis
+  namespace: docmost
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: docmost-redis
+  template:
+    metadata:
+      labels:
+        app: docmost-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: docmost-redis
+  namespace: docmost
+spec:
+  selector:
+    app: docmost-redis
+  ports:
+    - port: 6379
