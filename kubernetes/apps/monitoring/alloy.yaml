@@ -1,0 +1,106 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: alloy
+  namespace: monitoring
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: alloy
+      sourceRef:
+        kind: HelmRepository
+        name: grafana
+        namespace: flux-system
+  values:
+    alloy:
+      configMap:
+        content: |
+          // ── Pod log collection ──────────────────────────────────────────────
+          discovery.kubernetes "pods" {
+            role = "pod"
+          }
+
+          discovery.relabel "pod_logs" {
+            targets = discovery.kubernetes.pods.targets
+            rule {
+              source_labels = ["__meta_kubernetes_namespace"]
+              target_label  = "namespace"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_pod_name"]
+              target_label  = "pod"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_pod_container_name"]
+              target_label  = "container"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_name"]
+              separator     = "/"
+              target_label  = "job"
+            }
+            rule {
+              source_labels = ["__meta_kubernetes_pod_node_name"]
+              target_label  = "node"
+            }
+          }
+
+          loki.source.kubernetes "pods" {
+            targets    = discovery.relabel.pod_logs.output
+            forward_to = [loki.write.default.receiver]
+          }
+
+          loki.write "default" {
+            endpoint {
+              url = "http://loki:3100/loki/api/v1/push"
+            }
+          }
+
+          // ── Node metrics ────────────────────────────────────────────────────
+          prometheus.exporter.unix "node" {}
+
+          prometheus.scrape "node" {
+            targets    = prometheus.exporter.unix.node.targets
+            forward_to = [prometheus.remote_write.default.receiver]
+            job_name   = "node-exporter"
+          }
+
+          // ── Kubernetes metrics (kube-state-metrics) ─────────────────────────
+          discovery.kubernetes "services" {
+            role = "service"
+          }
+
+          discovery.relabel "kube_state_metrics" {
+            targets = discovery.kubernetes.services.targets
+            rule {
+              source_labels = ["__meta_kubernetes_service_label_app_kubernetes_io_name"]
+              regex         = "kube-state-metrics"
+              action        = "keep"
+            }
+          }
+
+          prometheus.scrape "kube_state_metrics" {
+            targets    = discovery.relabel.kube_state_metrics.output
+            forward_to = [prometheus.remote_write.default.receiver]
+            job_name   = "kube-state-metrics"
+          }
+
+          // ── Remote write to Prometheus ───────────────────────────────────────
+          prometheus.remote_write "default" {
+            endpoint {
+              url = "http://kube-prometheus-stack-prometheus:9090/api/v1/write"
+            }
+          }
+
+    # Run as DaemonSet so every node gets log collection + node metrics
+    controller:
+      type: daemonset
+
+    # Needs host access for node metrics
+    securityContext:
+      privileged: true
+      runAsUser: 0
+
+    tolerations:
+      - operator: Exists
