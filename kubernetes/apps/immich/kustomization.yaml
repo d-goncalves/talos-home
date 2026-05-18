@@ -5,3 +5,4 @@ resources:
   - pvc.yaml
   - postgres.yaml
   - helmrelease.yaml
+  - ingress.yaml
