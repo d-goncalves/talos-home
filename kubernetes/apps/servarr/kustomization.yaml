@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - storage.yaml
+  - gluetun-qbittorrent.yaml
+  - prowlarr.yaml
+  - sonarr.yaml
+  - radarr.yaml
+  - bazarr.yaml
+  - jellyfin.yaml
+  - jellyseerr.yaml
+  - ingress.yaml

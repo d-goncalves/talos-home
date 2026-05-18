@@ -1,0 +1,139 @@
+# Run once after all apps are up to wire everything together via API.
+# kubectl create job --from=cronjob/configure-servarr configure-servarr-manual -n servarr
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: configure-servarr
+  namespace: servarr
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: configure
+          image: alpine/curl
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+
+              PROWLARR_URL="http://prowlarr:9696"
+              SONARR_URL="http://sonarr:8989"
+              RADARR_URL="http://radarr:7878"
+              QBT_URL="http://qbittorrent:8080"
+              PROWLARR_KEY="REDACTED_PROWLARR_API_KEY"
+              SONARR_KEY="REDACTED_SONARR_API_KEY"
+              RADARR_KEY="REDACTED_RADARR_API_KEY"
+
+              wait_for() {
+                echo "Waiting for $1..."
+                until curl -sf "$1/ping" > /dev/null 2>&1 || curl -sf "$1" > /dev/null 2>&1; do
+                  sleep 5
+                done
+                echo "$1 is ready"
+              }
+
+              wait_for "$PROWLARR_URL"
+              wait_for "$SONARR_URL"
+              wait_for "$RADARR_URL"
+              sleep 10
+
+              echo "=== Configuring Sonarr: qBittorrent download client ==="
+              curl -sf -X POST "$SONARR_URL/api/v3/downloadclient" \
+                -H "X-Api-Key: $SONARR_KEY" \
+                -H "Content-Type: application/json" \
+                -d '{
+                  "name": "qBittorrent",
+                  "enable": true,
+                  "protocol": "torrent",
+                  "priority": 1,
+                  "implementation": "QBittorrent",
+                  "implementationName": "qBittorrent",
+                  "infoLink": "",
+                  "fields": [
+                    {"name": "host", "value": "qbittorrent"},
+                    {"name": "port", "value": 8080},
+                    {"name": "useSsl", "value": false},
+                    {"name": "username", "value": "admin"},
+                    {"name": "password", "value": ""},
+                    {"name": "tvCategory", "value": "tv-sonarr"},
+                    {"name": "recentTvPriority", "value": 0},
+                    {"name": "olderTvPriority", "value": 0},
+                    {"name": "initialState", "value": 0}
+                  ]
+                }' && echo "Sonarr download client configured" || echo "Sonarr download client already configured or failed"
+
+              echo "=== Configuring Sonarr: root folder ==="
+              curl -sf -X POST "$SONARR_URL/api/v3/rootfolder" \
+                -H "X-Api-Key: $SONARR_KEY" \
+                -H "Content-Type: application/json" \
+                -d '{"path": "/data/media/tv"}' \
+                && echo "Sonarr root folder set" || echo "Sonarr root folder already set"
+
+              echo "=== Configuring Radarr: qBittorrent download client ==="
+              curl -sf -X POST "$RADARR_URL/api/v3/downloadclient" \
+                -H "X-Api-Key: $RADARR_KEY" \
+                -H "Content-Type: application/json" \
+                -d '{
+                  "name": "qBittorrent",
+                  "enable": true,
+                  "protocol": "torrent",
+                  "priority": 1,
+                  "implementation": "QBittorrent",
+                  "implementationName": "qBittorrent",
+                  "infoLink": "",
+                  "fields": [
+                    {"name": "host", "value": "qbittorrent"},
+                    {"name": "port", "value": 8080},
+                    {"name": "useSsl", "value": false},
+                    {"name": "username", "value": "admin"},
+                    {"name": "password", "value": ""},
+                    {"name": "movieCategory", "value": "radarr"},
+                    {"name": "recentMoviePriority", "value": 0},
+                    {"name": "olderMoviePriority", "value": 0},
+                    {"name": "initialState", "value": 0}
+                  ]
+                }' && echo "Radarr download client configured" || echo "Radarr download client already configured or failed"
+
+              echo "=== Configuring Radarr: root folder ==="
+              curl -sf -X POST "$RADARR_URL/api/v3/rootfolder" \
+                -H "X-Api-Key: $RADARR_KEY" \
+                -H "Content-Type: application/json" \
+                -d '{"path": "/data/media/movies"}' \
+                && echo "Radarr root folder set" || echo "Radarr root folder already set"
+
+              echo "=== Configuring Prowlarr: Sonarr connection ==="
+              curl -sf -X POST "$PROWLARR_URL/api/v1/applications" \
+                -H "X-Api-Key: $PROWLARR_KEY" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"name\": \"Sonarr\",
+                  \"syncLevel\": \"fullSync\",
+                  \"implementation\": \"Sonarr\",
+                  \"implementationName\": \"Sonarr\",
+                  \"fields\": [
+                    {\"name\": \"prowlarrUrl\", \"value\": \"http://prowlarr:9696\"},
+                    {\"name\": \"baseUrl\", \"value\": \"http://sonarr:8989\"},
+                    {\"name\": \"apiKey\", \"value\": \"$SONARR_KEY\"},
+                    {\"name\": \"syncCategories\", \"value\": [5000,5010,5020,5030,5040,5045,5050]}
+                  ]
+                }" && echo "Prowlarr→Sonarr configured" || echo "Already configured or failed"
+
+              echo "=== Configuring Prowlarr: Radarr connection ==="
+              curl -sf -X POST "$PROWLARR_URL/api/v1/applications" \
+                -H "X-Api-Key: $PROWLARR_KEY" \
+                -H "Content-Type: application/json" \
+                -d "{
+                  \"name\": \"Radarr\",
+                  \"syncLevel\": \"fullSync\",
+                  \"implementation\": \"Radarr\",
+                  \"implementationName\": \"Radarr\",
+                  \"fields\": [
+                    {\"name\": \"prowlarrUrl\", \"value\": \"http://prowlarr:9696\"},
+                    {\"name\": \"baseUrl\", \"value\": \"http://radarr:7878\"},
+                    {\"name\": \"apiKey\", \"value\": \"$RADARR_KEY\"},
+                    {\"name\": \"syncCategories\", \"value\": [2000,2010,2020,2030,2040,2045,2050,2060]}
+                  ]
+                }" && echo "Prowlarr→Radarr configured" || echo "Already configured or failed"
+
+              echo "=== Done ==="

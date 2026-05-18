@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: radarr
+  namespace: servarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: radarr
+  template:
+    metadata:
+      labels:
+        app: radarr
+    spec:
+      initContainers:
+        - name: init-config
+          image: alpine
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /config
+              if [ ! -f /config/config.xml ]; then
+                cat > /config/config.xml <<'XML'
+              <Config>
+                <InstanceName>Radarr</InstanceName>
+                <ApiKey>REDACTED_RADARR_API_KEY</ApiKey>
+                <AuthenticationMethod>Forms</AuthenticationMethod>
+                <AuthenticationRequired>Enabled</AuthenticationRequired>
+                <Branch>master</Branch>
+                <LogLevel>info</LogLevel>
+                <Port>7878</Port>
+                <UrlBase></UrlBase>
+              </Config>
+              XML
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      containers:
+        - name: radarr
+          image: lscr.io/linuxserver/radarr:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Europe/Lisbon
+          ports:
+            - containerPort: 7878
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: radarr-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: servarr-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: radarr
+  namespace: servarr
+spec:
+  selector:
+    app: radarr
+  ports:
+    - port: 7878

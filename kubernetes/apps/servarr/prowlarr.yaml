@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prowlarr
+  namespace: servarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prowlarr
+  template:
+    metadata:
+      labels:
+        app: prowlarr
+    spec:
+      initContainers:
+        - name: init-config
+          image: alpine
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /config
+              if [ ! -f /config/config.xml ]; then
+                cat > /config/config.xml <<'XML'
+              <Config>
+                <InstanceName>Prowlarr</InstanceName>
+                <ApiKey>REDACTED_PROWLARR_API_KEY</ApiKey>
+                <AuthenticationMethod>Forms</AuthenticationMethod>
+                <AuthenticationRequired>Enabled</AuthenticationRequired>
+                <Branch>master</Branch>
+                <LogLevel>info</LogLevel>
+                <Port>9696</Port>
+                <UrlBase></UrlBase>
+              </Config>
+              XML
+              fi
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      containers:
+        - name: prowlarr
+          image: lscr.io/linuxserver/prowlarr:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Europe/Lisbon
+          ports:
+            - containerPort: 9696
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          resources:
+            requests:
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: prowlarr-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prowlarr
+  namespace: servarr
+spec:
+  selector:
+    app: prowlarr
+  ports:
+    - port: 9696

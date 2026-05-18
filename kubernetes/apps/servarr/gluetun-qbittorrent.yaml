@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qbittorrent
+  namespace: servarr
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qbittorrent
+  template:
+    metadata:
+      labels:
+        app: qbittorrent
+    spec:
+      initContainers:
+        - name: init-config
+          image: alpine
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p /config/qBittorrent
+              if [ ! -f /config/qBittorrent/qBittorrent.conf ]; then
+                cat > /config/qBittorrent/qBittorrent.conf <<'CONF'
+              [LegalNotice]
+              Accepted=true
+
+              [BitTorrent]
+              Session\DefaultSavePath=/data/downloads/completed
+              Session\TempPath=/data/downloads/torrents
+              Session\TempPathEnabled=true
+
+              [Preferences]
+              WebUI\Port=8080
+              WebUI\Username=admin
+              WebUI\LocalHostAuth=false
+              CONF
+              fi
+              # Ensure media directories exist
+              mkdir -p /data/media/movies /data/media/tv /data/downloads/completed /data/downloads/torrents
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+      containers:
+        - name: gluetun
+          image: qmcgaw/gluetun:latest
+          securityContext:
+            capabilities:
+              add: [NET_ADMIN]
+          env:
+            - name: VPN_SERVICE_PROVIDER
+              value: custom
+            - name: VPN_TYPE
+              value: wireguard
+            - name: WIREGUARD_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: servarr-secrets
+                  key: WIREGUARD_PRIVATE_KEY
+            - name: WIREGUARD_PUBLIC_KEY
+              value: fkBdrgo6NaOI9ICRd+i2mDbieKUzEXkj4vX3ItZ+5lM=
+            - name: WIREGUARD_ADDRESSES
+              value: 10.2.0.2/32
+            - name: VPN_ENDPOINT_IP
+              value: "79.127.131.222"
+            - name: VPN_ENDPOINT_PORT
+              value: "51820"
+            - name: VPN_PORT_FORWARDING
+              value: "on"
+            - name: VPN_PORT_FORWARDING_PROVIDER
+              value: protonvpn
+            - name: FIREWALL_INPUT_PORTS
+              value: "8080"
+            - name: DOT
+              value: "off"
+            - name: DNS_ADDRESS
+              value: "10.2.0.1"
+            - name: TZ
+              value: Europe/Lisbon
+          volumeMounts:
+            - name: tun
+              mountPath: /dev/net/tun
+        - name: qbittorrent
+          image: lscr.io/linuxserver/qbittorrent:latest
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Europe/Lisbon
+            - name: WEBUI_PORT
+              value: "8080"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: tun
+          hostPath:
+            path: /dev/net/tun
+            type: CharDevice
+        - name: config
+          persistentVolumeClaim:
+            claimName: qbittorrent-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: servarr-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qbittorrent
+  namespace: servarr
+spec:
+  selector:
+    app: qbittorrent
+  ports:
+    - name: webui
+      port: 8080
