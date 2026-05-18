@@ -1,0 +1,116 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+  namespace: homepage
+data:
+  settings.yaml: |
+    title: Home
+    background:
+      blur: sm
+      saturate: 50
+    theme: dark
+    color: slate
+    headerStyle: clean
+    layout:
+      Media:
+        style: row
+        columns: 3
+      Finance:
+        style: row
+        columns: 3
+      Tools:
+        style: row
+        columns: 4
+      Infrastructure:
+        style: row
+        columns: 4
+
+  bookmarks.yaml: |
+    []
+
+  services.yaml: |
+    - Media:
+        - Immich:
+            href: https://immich.<tailnet>.ts.net
+            description: Photo library
+            icon: immich.png
+        - Audiobookshelf:
+            href: https://audiobookshelf.<tailnet>.ts.net
+            description: Audiobooks
+            icon: audiobookshelf.png
+        - Jellyfin:
+            href: https://jellyfin.<tailnet>.ts.net
+            description: Media server
+            icon: jellyfin.png
+
+    - Finance:
+        - Actual Budget:
+            href: https://actualbudget.<tailnet>.ts.net
+            description: Personal finance
+            icon: actual-budget.png
+        - Wallos:
+            href: https://wallos.<tailnet>.ts.net
+            description: Subscriptions
+            icon: wallos.png
+
+    - Tools:
+        - Homebox:
+            href: https://homebox.<tailnet>.ts.net
+            description: Home inventory
+            icon: homebox.png
+        - AdventureLog:
+            href: https://adventurelog.<tailnet>.ts.net
+            description: Travel tracker
+            icon: adventurelog.png
+        - IT Tools:
+            href: https://it-tools.<tailnet>.ts.net
+            description: Developer utilities
+            icon: it-tools.png
+        - BentoPDF:
+            href: https://bentopdf.<tailnet>.ts.net
+            description: PDF toolkit
+            icon: pdf.png
+
+    - Infrastructure:
+        - Gitea:
+            href: https://gitea.<tailnet>.ts.net
+            description: Git server
+            icon: gitea.png
+        - Grafana:
+            href: https://grafana.<tailnet>.ts.net
+            description: Monitoring
+            icon: grafana.png
+        - WatchYourLAN:
+            href: https://watchyourlan.<tailnet>.ts.net
+            description: Network monitor
+            icon: watchyourlan.png
+        - LibreSpeed:
+            href: https://librespeed.<tailnet>.ts.net
+            description: Speed test
+            icon: librespeed.png
+
+  widgets.yaml: |
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: cluster
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+    - datetime:
+        text_size: xl
+        format:
+          dateStyle: short
+          timeStyle: short
+
+  kubernetes.yaml: |
+    mode: cluster
+
+  docker.yaml: |
+    {}

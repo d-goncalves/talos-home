@@ -32,7 +32,12 @@ spec:
       prometheusSpec:
         # Accept remote_write from Alloy
         enableRemoteWriteReceiver: true
-        retention: 30d
+        retention: 7d
+        resources:
+          requests:
+            memory: 256Mi
+          limits:
+            memory: 512Mi
         securityContext:
           fsGroup: 0
           runAsUser: 0
@@ -48,6 +53,11 @@ spec:
 
     grafana:
       adminPassword: REDACTED_GRAFANA_PASSWORD
+      resources:
+        requests:
+          memory: 128Mi
+        limits:
+          memory: 256Mi
       initChownData:
         enabled: false
       persistence:
