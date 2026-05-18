@@ -35,7 +35,7 @@ spec:
             - name: TZ
               value: Europe/Lisbon
             - name: HBOX_OPTIONS_ALLOW_REGISTRATION
-              value: "false"
+              value: "true"
           volumeMounts:
             - name: data
               mountPath: /data
