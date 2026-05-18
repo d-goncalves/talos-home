@@ -26,7 +26,7 @@ spec:
             - name: PGPASSWORD
               value: adventurelog
             - name: SECRET_KEY
-              value: changeme-use-a-long-random-string
+              value: REDACTED_SECRET_KEY
             - name: PUBLIC_URL
               value: https://adventurelog.<tailnet>.ts.net
             - name: FRONTEND_URL
@@ -34,7 +34,7 @@ spec:
             - name: DJANGO_ADMIN_USERNAME
               value: admin
             - name: DJANGO_ADMIN_PASSWORD
-              value: changeme
+              value: REDACTED_DJANGO_PASSWORD
             - name: DJANGO_ADMIN_EMAIL
               value: REDACTED_EMAIL
           volumeMounts:

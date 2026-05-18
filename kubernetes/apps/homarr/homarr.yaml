@@ -35,7 +35,7 @@ spec:
             - name: TZ
               value: Europe/Lisbon
             - name: SECRET_ENCRYPTION_KEY
-              value: ce42c40474da6539fe2770d286a6343e4bda57e697556c2f9e9039d8edbbb48b
+              value: dbc65abf46411defa358cd2e8be8dcde5a45c7364517e9d4e208752051b4914a
           volumeMounts:
             - name: data
               mountPath: /app/data
