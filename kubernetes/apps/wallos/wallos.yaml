@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wallos-db
+  namespace: wallos
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wallos-uploads
+  namespace: wallos
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wallos
+  namespace: wallos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wallos
+  template:
+    metadata:
+      labels:
+        app: wallos
+    spec:
+      containers:
+        - name: wallos
+          image: bellamy/wallos:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: TZ
+              value: Europe/Lisbon
+          volumeMounts:
+            - name: db
+              mountPath: /var/www/html/db
+            - name: uploads
+              mountPath: /var/www/html/images/uploads
+      volumes:
+        - name: db
+          persistentVolumeClaim:
+            claimName: wallos-db
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: wallos-uploads
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wallos
+  namespace: wallos
+spec:
+  selector:
+    app: wallos
+  ports:
+    - port: 80

@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: wallos
+  namespace: wallos
+  annotations:
+    tailscale.com/funnel: "false"
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Wallos"
+    gethomepage.dev/description: "Subscription tracker"
+    gethomepage.dev/group: "Finance"
+    gethomepage.dev/icon: "wallos"
+    gethomepage.dev/href: "https://wallos.<tailnet>.ts.net"
+    gethomepage.dev/pod-selector: "app=wallos"
+spec:
+  ingressClassName: tailscale
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: wallos
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - wallos
