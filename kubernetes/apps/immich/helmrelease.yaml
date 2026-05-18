@@ -43,7 +43,6 @@ spec:
     server:
       service:
         main:
-          type: NodePort
-          ports:
-            http:
-              nodePort: 32283
+          annotations:
+            tailscale.com/expose: "true"
+            tailscale.com/hostname: immich
