@@ -6,3 +6,4 @@ resources:
   - monitoring/
   - docmost/
   - actualbudget/
+  - bentopdf/
