@@ -33,6 +33,10 @@ spec:
         # Accept remote_write from Alloy
         enableRemoteWriteReceiver: true
         retention: 30d
+        securityContext:
+          fsGroup: 0
+          runAsUser: 0
+          runAsNonRoot: false
         storageSpec:
           volumeClaimTemplate:
             spec:
@@ -44,6 +48,8 @@ spec:
 
     grafana:
       adminPassword: changeme
+      initChownData:
+        enabled: false
       persistence:
         enabled: true
         storageClassName: local-path
