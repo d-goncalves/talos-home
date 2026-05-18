@@ -1,3 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: adventurelog-postgres-nfs
+  namespace: adventurelog
+spec:
+  storageClassName: nfs-adventurelog-postgres
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -14,6 +27,10 @@ spec:
       labels:
         app: adventurelog-postgres
     spec:
+      securityContext:
+        runAsUser: 977
+        runAsGroup: 988
+        fsGroup: 988
       containers:
         - name: postgres
           image: postgis/postgis:16-3.4
@@ -27,15 +44,10 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes: [ReadWriteOnce]
-        storageClassName: local-path
-        resources:
-          requests:
-            storage: 5Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: adventurelog-postgres-nfs
 ---
 apiVersion: v1
 kind: Service

@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: wallos-db
+  name: wallos-db-nfs
   namespace: wallos
 spec:
-  storageClassName: local-path
+  storageClassName: nfs-wallos
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
@@ -14,12 +14,12 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: wallos-uploads
+  name: wallos-uploads-nfs
   namespace: wallos
 spec:
-  storageClassName: local-path
+  storageClassName: nfs-wallos
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
@@ -55,10 +55,10 @@ spec:
       volumes:
         - name: db
           persistentVolumeClaim:
-            claimName: wallos-db
+            claimName: wallos-db-nfs
         - name: uploads
           persistentVolumeClaim:
-            claimName: wallos-uploads
+            claimName: wallos-uploads-nfs
 ---
 apiVersion: v1
 kind: Service
