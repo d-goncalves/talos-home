@@ -5,3 +5,4 @@ resources:
   - adventurelog/
   - monitoring/
   - docmost/
+  - actualbudget/
