@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: watchyourlan-data
+  namespace: watchyourlan
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: watchyourlan
+  namespace: watchyourlan
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: watchyourlan
+  template:
+    metadata:
+      labels:
+        app: watchyourlan
+    spec:
+      hostNetwork: true
+      containers:
+        - name: watchyourlan
+          image: aceberg/watchyourlan:latest
+          ports:
+            - containerPort: 8840
+          env:
+            - name: TZ
+              value: Europe/Lisbon
+            - name: IFACE
+              value: ens18
+          securityContext:
+            capabilities:
+              add:
+                - NET_RAW
+                - NET_ADMIN
+          volumeMounts:
+            - name: data
+              mountPath: /data/WatchYourLAN
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: watchyourlan-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: watchyourlan
+  namespace: watchyourlan
+spec:
+  selector:
+    app: watchyourlan
+  ports:
+    - port: 8840
