@@ -1,0 +1,55 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: kube-prometheus-stack
+  namespace: monitoring
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: kube-prometheus-stack
+      sourceRef:
+        kind: HelmRepository
+        name: prometheus-community
+        namespace: flux-system
+  values:
+    # Alloy handles node metrics — disable bundled exporters
+    nodeExporter:
+      enabled: false
+    prometheusOperator:
+      admissionWebhooks:
+        enabled: false
+
+    alertmanager:
+      enabled: false
+
+    kubeStateMetrics:
+      enabled: true
+
+    prometheus:
+      prometheusSpec:
+        # Accept remote_write from Alloy
+        enableRemoteWriteReceiver: true
+        retention: 30d
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: local-path
+              accessModes: [ReadWriteOnce]
+              resources:
+                requests:
+                  storage: 20Gi
+
+    grafana:
+      adminPassword: changeme
+      persistence:
+        enabled: true
+        storageClassName: local-path
+        size: 1Gi
+      ingress:
+        enabled: false
+      additionalDataSources:
+        - name: Loki
+          type: loki
+          url: http://loki:3100
+          access: proxy

@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - immich/
   - adventurelog/
+  - monitoring/
