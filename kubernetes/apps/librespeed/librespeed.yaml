@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: librespeed
+  namespace: librespeed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: librespeed
+  template:
+    metadata:
+      labels:
+        app: librespeed
+    spec:
+      containers:
+        - name: librespeed
+          image: adolfintel/speedtest:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: MODE
+              value: standalone
+            - name: TZ
+              value: Europe/Lisbon
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: librespeed
+  namespace: librespeed
+spec:
+  selector:
+    app: librespeed
+  ports:
+    - port: 80
