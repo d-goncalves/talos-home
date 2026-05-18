@@ -5,6 +5,12 @@ metadata:
   namespace: immich
   annotations:
     tailscale.com/funnel: "false"
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Immich"
+    gethomepage.dev/description: "Photo library"
+    gethomepage.dev/group: "Media"
+    gethomepage.dev/icon: "immich"
+    gethomepage.dev/href: "https://immich.<tailnet>.ts.net"
 spec:
   ingressClassName: tailscale
   rules:

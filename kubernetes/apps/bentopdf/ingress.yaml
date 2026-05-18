@@ -5,6 +5,12 @@ metadata:
   namespace: bentopdf
   annotations:
     tailscale.com/funnel: "false"
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "BentoPDF"
+    gethomepage.dev/description: "PDF toolkit"
+    gethomepage.dev/group: "Tools"
+    gethomepage.dev/icon: "mdi-file-pdf-box"
+    gethomepage.dev/href: "https://bentopdf.<tailnet>.ts.net"
 spec:
   ingressClassName: tailscale
   rules:

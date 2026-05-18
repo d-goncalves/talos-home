@@ -5,6 +5,12 @@ metadata:
   namespace: docmost
   annotations:
     tailscale.com/funnel: "false"
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Docmost"
+    gethomepage.dev/description: "Wiki & docs"
+    gethomepage.dev/group: "Productivity"
+    gethomepage.dev/icon: "mdi-file-document-outline"
+    gethomepage.dev/href: "https://docmost.<tailnet>.ts.net"
 spec:
   ingressClassName: tailscale
   rules:

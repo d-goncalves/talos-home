@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homepage-config
+  namespace: homepage
+data:
+  settings.yaml: |
+    title: Home
+    theme: dark
+    color: slate
+    headerStyle: clean
+    layout:
+      Media:
+        icon: mdi-photo
+      Finance:
+        icon: mdi-currency-usd
+      Productivity:
+        icon: mdi-pencil-box-outline
+      Tools:
+        icon: mdi-tools
+      Infrastructure:
+        icon: mdi-server
+
+  kubernetes.yaml: |
+    mode: cluster
+
+  widgets.yaml: |
+    - greeting:
+        text_size: xl
+        text: Welcome home
+    - datetime:
+        text_size: l
+        format:
+          dateStyle: long
+          timeStyle: short
+          hourCycle: h23
+    - kubernetes:
+        cluster:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+          label: talos
+        nodes:
+          show: true
+          cpu: true
+          memory: true
+          showLabel: true
+
+  services.yaml: |
+    []
+
+  bookmarks.yaml: |
+    []
