@@ -40,9 +40,3 @@ spec:
           size: 1Gi
           accessMode: ReadWriteOnce
 
-    server:
-      service:
-        main:
-          annotations:
-            tailscale.com/expose: "true"
-            tailscale.com/hostname: immich
