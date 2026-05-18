@@ -7,10 +7,11 @@ metadata:
 provisioner: nfs.csi.k8s.io
 parameters:
   server: NAS_IP_PLACEHOLDER
-  share: /media/immich
+  share: /volume/NAS_DATA_PATH_PLACEHOLDER/immich
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
 mountOptions:
-  - nfsvers=4.1
+  - nfsvers=3
+  - nolock
   - async
   - hard
