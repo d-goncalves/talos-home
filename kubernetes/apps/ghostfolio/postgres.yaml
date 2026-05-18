@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ghostfolio-postgres
+  namespace: ghostfolio
+spec:
+  serviceName: ghostfolio-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghostfolio-postgres
+  template:
+    metadata:
+      labels:
+        app: ghostfolio-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_DB
+              value: ghostfolio
+            - name: POSTGRES_USER
+              value: ghostfolio
+            - name: POSTGRES_PASSWORD
+              value: ghostfolio
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghostfolio-postgres
+  namespace: ghostfolio
+spec:
+  selector:
+    app: ghostfolio-postgres
+  ports:
+    - port: 5432
