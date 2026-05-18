@@ -9,6 +9,19 @@ spec:
   ports:
     - port: 5432
 ---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: immich-postgres-nfs
+  namespace: immich
+spec:
+  storageClassName: nfs-immich-postgres
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -25,6 +38,10 @@ spec:
       labels:
         app: immich-postgres
     spec:
+      securityContext:
+        runAsUser: 977
+        runAsGroup: 988
+        fsGroup: 988
       containers:
         - name: postgres
           image: ghcr.io/immich-app/postgres:14-vectorchord0.3.0-pgvectors0.2.0
@@ -42,12 +59,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes: [ReadWriteOnce]
-        storageClassName: local-path
-        resources:
-          requests:
-            storage: 10Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: immich-postgres-nfs
