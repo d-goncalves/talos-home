@@ -5,6 +5,12 @@ metadata:
   namespace: adventurelog
   annotations:
     tailscale.com/funnel: "false"
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "AdventureLog"
+    gethomepage.dev/description: "Travel tracker"
+    gethomepage.dev/group: "Productivity"
+    gethomepage.dev/icon: "adventurelog"
+    gethomepage.dev/href: "https://adventurelog.<tailnet>.ts.net"
 spec:
   ingressClassName: tailscale
   rules:

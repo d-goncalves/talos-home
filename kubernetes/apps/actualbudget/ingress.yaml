@@ -5,6 +5,12 @@ metadata:
   namespace: actualbudget
   annotations:
     tailscale.com/funnel: "false"
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Actual Budget"
+    gethomepage.dev/description: "Personal finance"
+    gethomepage.dev/group: "Finance"
+    gethomepage.dev/icon: "actual-budget"
+    gethomepage.dev/href: "https://actualbudget.<tailnet>.ts.net"
 spec:
   ingressClassName: tailscale
   rules:

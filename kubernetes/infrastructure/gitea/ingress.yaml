@@ -5,6 +5,12 @@ metadata:
   namespace: gitea
   annotations:
     tailscale.com/funnel: "false"
+    gethomepage.dev/enabled: "true"
+    gethomepage.dev/name: "Gitea"
+    gethomepage.dev/description: "Git repositories"
+    gethomepage.dev/group: "Infrastructure"
+    gethomepage.dev/icon: "gitea"
+    gethomepage.dev/href: "https://gitea.<tailnet>.ts.net"
 spec:
   ingressClassName: tailscale
   rules:
