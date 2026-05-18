@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: docmost-redis
-  namespace: docmost
+  name: affine-redis
+  namespace: affine
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: docmost-redis
+      app: affine-redis
   template:
     metadata:
       labels:
-        app: docmost-redis
+        app: affine-redis
     spec:
       containers:
         - name: redis
@@ -20,10 +20,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: docmost-redis
-  namespace: docmost
+  name: affine-redis
+  namespace: affine
 spec:
   selector:
-    app: docmost-redis
+    app: affine-redis
   ports:
     - port: 6379

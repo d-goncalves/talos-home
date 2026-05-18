@@ -4,7 +4,7 @@ resources:
   - immich/
   - adventurelog/
   - monitoring/
-  - docmost/
+  - affine/
   - actualbudget/
   - bentopdf/
   - wallos/
