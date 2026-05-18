@@ -12,15 +12,6 @@ spec:
         kind: HelmRepository
         name: tailscale
         namespace: flux-system
-  valuesFrom:
-    - kind: Secret
-      name: tailscale-operator-oauth
-      targetPath: oauth.clientId
-      valuesKey: clientId
-    - kind: Secret
-      name: tailscale-operator-oauth
-      targetPath: oauth.clientSecret
-      valuesKey: clientSecret
   values:
     operatorConfig:
       hostname: talos-operator
