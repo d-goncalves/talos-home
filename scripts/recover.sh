@@ -66,8 +66,8 @@ mkdir -p ~/.talos
 if [[ -f ~/.talos/config ]]; then
   warn "~/.talos/config already exists, skipping (delete it first to overwrite)"
 else
-  info "Fetching talosconfig from repo..."
-  curl -sf "$GITEA_RAW/secrets/talosconfig" > ~/.talos/config
+  info "Fetching talosconfig from 1Password..."
+  op document get "Talos - talosconfig" --vault "Server Infrastructure" > ~/.talos/config
   success "talosconfig saved"
 fi
 

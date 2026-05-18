@@ -47,7 +47,7 @@ spec:
                   storage: 20Gi
 
     grafana:
-      adminPassword: changeme
+      adminPassword: REDACTED_GRAFANA_PASSWORD
       initChownData:
         enabled: false
       persistence:
