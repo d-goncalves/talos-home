@@ -1,29 +1,29 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: docmost-postgres
-  namespace: docmost
+  name: affine-postgres
+  namespace: affine
 spec:
-  serviceName: docmost-postgres
+  serviceName: affine-postgres
   replicas: 1
   selector:
     matchLabels:
-      app: docmost-postgres
+      app: affine-postgres
   template:
     metadata:
       labels:
-        app: docmost-postgres
+        app: affine-postgres
     spec:
       containers:
         - name: postgres
           image: postgres:16
           env:
             - name: POSTGRES_DB
-              value: docmost
+              value: affine
             - name: POSTGRES_USER
-              value: docmost
+              value: affine
             - name: POSTGRES_PASSWORD
-              value: docmost
+              value: affine
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
@@ -40,10 +40,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: docmost-postgres
-  namespace: docmost
+  name: affine-postgres
+  namespace: affine
 spec:
   selector:
-    app: docmost-postgres
+    app: affine-postgres
   ports:
     - port: 5432

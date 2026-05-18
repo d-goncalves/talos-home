@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: affine-config
+  namespace: affine
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: affine-storage
+  namespace: affine
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: affine
+  namespace: affine
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: affine
+  template:
+    metadata:
+      labels:
+        app: affine
+    spec:
+      containers:
+        - name: affine
+          image: ghcr.io/toeverything/affine-graphql:stable
+          ports:
+            - containerPort: 3010
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: AFFINE_CONFIG_PATH
+              value: /root/.affine/config
+            - name: DATABASE_URL
+              value: postgresql://affine:affine@affine-postgres:5432/affine
+            - name: REDIS_SERVER_HOST
+              value: affine-redis
+            - name: AFFINE_SERVER_HOST
+              value: affine.<tailnet>.ts.net
+            - name: AFFINE_SERVER_HTTPS
+              value: "true"
+          volumeMounts:
+            - name: config
+              mountPath: /root/.affine/config
+            - name: storage
+              mountPath: /root/.affine/storage
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: affine-config
+        - name: storage
+          persistentVolumeClaim:
+            claimName: affine-storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: affine
+  namespace: affine
+spec:
+  selector:
+    app: affine
+  ports:
+    - port: 3010
