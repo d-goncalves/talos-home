@@ -32,8 +32,28 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /app/config
+            - name: config-files
+              mountPath: /app/config/bookmarks.yaml
+              subPath: bookmarks.yaml
+            - name: config-files
+              mountPath: /app/config/docker.yaml
+              subPath: docker.yaml
+            - name: config-files
+              mountPath: /app/config/kubernetes.yaml
+              subPath: kubernetes.yaml
+            - name: config-files
+              mountPath: /app/config/services.yaml
+              subPath: services.yaml
+            - name: config-files
+              mountPath: /app/config/settings.yaml
+              subPath: settings.yaml
+            - name: config-files
+              mountPath: /app/config/widgets.yaml
+              subPath: widgets.yaml
       volumes:
         - name: config
+          emptyDir: {}
+        - name: config-files
           configMap:
             name: homepage-config
 ---
