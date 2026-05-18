@@ -1,4 +1,5 @@
 # Talos sensitive files — never commit these
 talos/patches/tailscale.yaml
+talos/patches/tailscale-ext.yaml
 talos/talosconfig
 talos/machine-config/
