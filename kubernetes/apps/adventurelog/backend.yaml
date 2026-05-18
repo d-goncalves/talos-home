@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adventurelog-backend
+  namespace: adventurelog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adventurelog-backend
+  template:
+    metadata:
+      labels:
+        app: adventurelog-backend
+    spec:
+      containers:
+        - name: backend
+          image: ghcr.io/seanmorley15/adventurelog-backend:latest
+          env:
+            - name: PGHOST
+              value: adventurelog-postgres
+            - name: PGDATABASE
+              value: adventurelog
+            - name: PGUSER
+              value: adventurelog
+            - name: PGPASSWORD
+              value: adventurelog
+            - name: SECRET_KEY
+              value: changeme-use-a-long-random-string
+            - name: PUBLIC_URL
+              value: https://adventurelog.<tailnet>.ts.net
+            - name: FRONTEND_URL
+              value: https://adventurelog.<tailnet>.ts.net
+            - name: DJANGO_ADMIN_USERNAME
+              value: admin
+            - name: DJANGO_ADMIN_PASSWORD
+              value: changeme
+            - name: DJANGO_ADMIN_EMAIL
+              value: REDACTED_EMAIL
+          volumeMounts:
+            - name: media
+              mountPath: /code/media
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: adventurelog-media
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adventurelog-backend
+  namespace: adventurelog
+spec:
+  selector:
+    app: adventurelog-backend
+  ports:
+    - port: 8000

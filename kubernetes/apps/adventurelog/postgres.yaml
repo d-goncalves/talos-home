@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: adventurelog-postgres
+  namespace: adventurelog
+spec:
+  serviceName: adventurelog-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adventurelog-postgres
+  template:
+    metadata:
+      labels:
+        app: adventurelog-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_DB
+              value: adventurelog
+            - name: POSTGRES_USER
+              value: adventurelog
+            - name: POSTGRES_PASSWORD
+              value: adventurelog
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adventurelog-postgres
+  namespace: adventurelog
+spec:
+  selector:
+    app: adventurelog-postgres
+  ports:
+    - port: 5432

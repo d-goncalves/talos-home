@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adventurelog-frontend
+  namespace: adventurelog
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adventurelog-frontend
+  template:
+    metadata:
+      labels:
+        app: adventurelog-frontend
+    spec:
+      containers:
+        - name: frontend
+          image: ghcr.io/seanmorley15/adventurelog-frontend:latest
+          env:
+            - name: ORIGIN
+              value: https://adventurelog.<tailnet>.ts.net
+            - name: BACKEND_URL
+              value: http://adventurelog-backend:8000
+            - name: PUBLIC_URL
+              value: https://adventurelog.<tailnet>.ts.net
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adventurelog-frontend
+  namespace: adventurelog
+spec:
+  selector:
+    app: adventurelog-frontend
+  ports:
+    - port: 3000
