@@ -9,8 +9,8 @@ gitea:
       DB_TYPE: sqlite3
       PATH: /data/gitea/gitea.db
     server:
-      DOMAIN: gitea.local
-      ROOT_URL: http://gitea.local
+      DOMAIN: gitea.<tailnet>.ts.net
+      ROOT_URL: https://gitea.<tailnet>.ts.net
     cache:
       ADAPTER: memory
     session:
