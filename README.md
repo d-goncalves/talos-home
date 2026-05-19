@@ -54,8 +54,11 @@ scripts/         # tooling
 ## Recovery
 
 ### Prerequisites
-- NAS must be online (all app data lives there)
+- NAS must be online (all NFS-backed app data lives there)
 - Tailscale and 1Password signed in on your Mac
+- The repo cloned locally, or accessible via GitHub mirror
+
+> **⚠️ Gitea dependency**: The recover script is hosted on Gitea, which runs on the cluster. If the cluster is gone, Gitea is unreachable. Either clone this repo to GitHub as a mirror, or store the recover script content in 1Password before you need it.
 
 ### Step 1 — Reinstall Talos on the new VM
 
@@ -65,7 +68,7 @@ In Proxmox, boot the new VM from the Talos ISO, then apply the machine config:
 talosctl apply-config --insecure --nodes NODE_IP_PLACEHOLDER --file talos/controlplane.yaml
 ```
 
-> The machine config is in this repo under `talos/`. If you don't have the repo yet, fetch the file from 1Password or another backup before running this.
+> The machine config is in this repo under `talos/`. Fetch it from 1Password or a GitHub mirror if Gitea is unavailable.
 
 ### Step 2 — Restore tooling and repo
 
@@ -83,4 +86,20 @@ This fetches the talosconfig from 1Password, generates kubeconfig, and clones th
 kubectl apply -k ~/talos/kubernetes/flux
 ```
 
-Flux reconciles all apps automatically. PVCs bind to NFS and everything comes back up on its own — no manual app restores needed.
+Flux reconciles all apps automatically. Most app data is on NFS and survives node wipes.
+
+### What survives a full node wipe
+
+| Storage | Apps | Survives wipe? |
+|---|---|---|
+| NFS (Unifi NAS) | Jellyfin, Immich, Sonarr, Radarr, Prowlarr, Bazarr, qBittorrent, Audiobookshelf, Actual Budget, Wallos, Homebox, AdventureLog, Gitea, Grafana data | ✅ Yes |
+| local-path (node disk) | Outline (wiki content + postgres), Uptime Kuma (monitors), Prometheus metrics, Grafana dashboards | ❌ No |
+
+### Post-recovery manual steps
+
+After Flux reconciles, the following need manual reconfiguration if the node was wiped:
+
+- **Outline** — all wiki content is lost; recreate from scratch
+- **Uptime Kuma** — monitors need to be re-added in the UI
+- **Ntfy** — admin user is recreated automatically by init container ✅
+- **Servarr apps** — Sonarr/Radarr/Prowlarr/Bazarr config is on NFS, should restore automatically ✅
