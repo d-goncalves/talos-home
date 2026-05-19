@@ -4,9 +4,9 @@ metadata:
   name: outline-data
   namespace: outline
 spec:
-  storageClassName: local-path
+  storageClassName: nfs-outline-data
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 10Gi
