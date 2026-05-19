@@ -112,12 +112,7 @@ data:
             icon: librespeed.png
 
   widgets.yaml: |
-    - datetime:
-        text_size: xl
-        format:
-          dateStyle: long
-          timeStyle: short
-          hour12: false
+    []
 
   kubernetes.yaml: |
     mode: disabled
