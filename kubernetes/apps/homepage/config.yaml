@@ -15,7 +15,7 @@ data:
         columns: 4
       Finance:
         style: row
-        columns: 3
+        columns: 4
       Tools:
         style: row
         columns: 4
