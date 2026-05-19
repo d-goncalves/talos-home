@@ -79,9 +79,9 @@ spec:
               mountPath: /var/lib/outline/data
           resources:
             requests:
-              memory: 256Mi
-            limits:
               memory: 512Mi
+            limits:
+              memory: 1Gi
       volumes:
         - name: data
           persistentVolumeClaim:
