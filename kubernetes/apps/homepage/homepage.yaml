@@ -53,12 +53,18 @@ spec:
             - name: config-files
               mountPath: /app/config/custom.css
               subPath: custom.css
+            - name: background-image
+              mountPath: /app/public/images/background.jpg
+              subPath: background.jpg
       volumes:
         - name: config
           emptyDir: {}
         - name: config-files
           configMap:
             name: homepage-config
+        - name: background-image
+          configMap:
+            name: homepage-background
 ---
 apiVersion: v1
 kind: Service

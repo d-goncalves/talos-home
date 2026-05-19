@@ -4,5 +4,6 @@ resources:
   - namespace.yaml
   - rbac.yaml
   - config.yaml
+  - background-image.yaml
   - homepage.yaml
   - ingress.yaml
