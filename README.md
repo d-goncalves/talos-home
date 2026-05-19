@@ -36,7 +36,9 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 | [WatchYourLAN](https://github.com/aceberg/WatchYourLAN) | Network monitor |
 | [LibreSpeed](https://librespeed.org) | Speed test |
 | [Outline](https://www.getoutline.com) | Wiki & docs |
-| Grafana + Loki + Prometheus | Monitoring |
+| [Uptime Kuma](https://uptime.kuma.pet) | Uptime monitoring |
+| [Ntfy](https://ntfy.sh) | Push notifications |
+| Grafana + Loki + Prometheus | Metrics & logs |
 
 ## Repo structure
 
