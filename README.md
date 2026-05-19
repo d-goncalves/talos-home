@@ -35,7 +35,7 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 | [Gitea](https://gitea.io) | Git repositories |
 | [WatchYourLAN](https://github.com/aceberg/WatchYourLAN) | Network monitor |
 | [LibreSpeed](https://librespeed.org) | Speed test |
-| [Docmost](https://docmost.com) | Wiki & docs |
+| [Outline](https://www.getoutline.com) | Wiki & docs |
 | Grafana + Loki + Prometheus | Monitoring |
 
 ## Repo structure
