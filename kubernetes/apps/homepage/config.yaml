@@ -7,9 +7,8 @@ data:
   settings.yaml: |
     title: Home
     theme: dark
-    color: slate
+    color: zinc
     headerStyle: clean
-    customCSS: /app/config/custom.css
     layout:
       Media:
         style: row
@@ -113,23 +112,12 @@ data:
             icon: librespeed.png
 
   widgets.yaml: |
-    - kubernetes:
-        cluster:
-          show: true
-          cpu: true
-          memory: true
-          showLabel: true
-          label: cluster
-        nodes:
-          show: true
-          cpu: true
-          memory: true
-          showLabel: true
     - datetime:
         text_size: xl
         format:
-          dateStyle: short
+          dateStyle: long
           timeStyle: short
+          hour12: false
 
   kubernetes.yaml: |
     mode: disabled
@@ -138,76 +126,65 @@ data:
     {}
 
   custom.css: |
-    /* ── Background ── */
-    body {
-      background: radial-gradient(ellipse at 20% 50%, #1a0533 0%, #0d0d18 45%, #060610 100%) fixed !important;
+    /* ── Background: layered radial gradients over near-black ── */
+    html::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(ellipse 60% 40% at 15% 25%, rgba(99, 30, 160, 0.35) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 85% 75%, rgba(20, 50, 140, 0.25) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 60% at 50% 110%, rgba(10, 30, 80, 0.4) 0%, transparent 60%),
+        #07070f;
     }
 
-    /* ── Glassmorphism cards ── */
-    #app .rounded-md,
-    #app .rounded-lg {
-      background: rgba(255, 255, 255, 0.04) !important;
-      backdrop-filter: blur(16px) !important;
-      -webkit-backdrop-filter: blur(16px) !important;
-      border: 1px solid rgba(255, 255, 255, 0.07) !important;
-      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease !important;
+    /* Make the page wrapper transparent so the pseudo-element shows */
+    html, body, #__next, main {
+      background: transparent !important;
     }
 
-    #app .rounded-md:hover,
-    #app .rounded-lg:hover {
-      background: rgba(139, 92, 246, 0.1) !important;
-      border-color: rgba(139, 92, 246, 0.3) !important;
-      transform: translateY(-1px) !important;
+    /* ── Service cards ── */
+    .service-card {
+      background: rgba(255, 255, 255, 0.045) !important;
+      border: 1px solid rgba(255, 255, 255, 0.08) !important;
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
+      transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s !important;
     }
 
-    /* ── Section headers ── */
-    #app h2 {
-      background: linear-gradient(90deg, #a78bfa, #60a5fa) !important;
+    .service-card:hover {
+      background: rgba(120, 60, 220, 0.12) !important;
+      border-color: rgba(150, 80, 255, 0.35) !important;
+      box-shadow: 0 0 20px rgba(120, 60, 220, 0.15) !important;
+      transform: translateY(-2px) !important;
+    }
+
+    /* ── Section group headers ── */
+    #information-widgets ~ div h2,
+    .services-group > h2,
+    h2 {
+      color: transparent !important;
+      background: linear-gradient(90deg, #c084fc 0%, #818cf8 50%, #60a5fa 100%) !important;
       -webkit-background-clip: text !important;
-      -webkit-text-fill-color: transparent !important;
       background-clip: text !important;
+      font-size: 0.7rem !important;
       font-weight: 700 !important;
-      letter-spacing: 0.05em !important;
+      letter-spacing: 0.12em !important;
       text-transform: uppercase !important;
-      font-size: 0.8rem !important;
     }
 
-    /* ── Status badges (RUNNING / PARTIAL) ── */
-    #app .rounded-full {
-      font-size: 0.6rem !important;
-      letter-spacing: 0.08em !important;
-    }
-
-    /* ── Service name text ── */
-    #app .service-name,
-    #app .font-semibold {
-      color: rgba(255, 255, 255, 0.9) !important;
-    }
-
-    /* ── Description text ── */
-    #app .font-thin,
-    #app .text-theme-600 {
-      color: rgba(255, 255, 255, 0.45) !important;
-    }
-
-    /* ── Top bar / header ── */
-    #app header {
-      background: rgba(6, 6, 16, 0.7) !important;
-      backdrop-filter: blur(20px) !important;
-      border-bottom: 1px solid rgba(139, 92, 246, 0.15) !important;
-    }
-
-    /* ── Widget containers ── */
-    #app .information-widget {
+    /* ── Widget bar (datetime) ── */
+    #information-widgets {
       background: rgba(255, 255, 255, 0.03) !important;
-      border: 1px solid rgba(255, 255, 255, 0.06) !important;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+      backdrop-filter: blur(12px) !important;
     }
 
     /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb {
-      background: rgba(139, 92, 246, 0.4);
-      border-radius: 3px;
+      background: rgba(130, 80, 240, 0.5);
+      border-radius: 4px;
     }
-    ::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.7); }
