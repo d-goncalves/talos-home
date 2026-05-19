@@ -55,9 +55,9 @@ spec:
       adminPassword: REDACTED_GRAFANA_PASSWORD
       resources:
         requests:
-          memory: 128Mi
-        limits:
           memory: 256Mi
+        limits:
+          memory: 512Mi
       initChownData:
         enabled: false
       persistence:
