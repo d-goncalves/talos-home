@@ -65,9 +65,9 @@ spec:
             - name: OIDC_AUTH_URI
               value: https://gitea.<tailnet>.ts.net/login/oauth/authorize
             - name: OIDC_TOKEN_URI
-              value: https://gitea.<tailnet>.ts.net/login/oauth/access_token
+              value: http://gitea-http.gitea:3000/login/oauth/access_token
             - name: OIDC_USERINFO_URI
-              value: https://gitea.<tailnet>.ts.net/login/oauth/userinfo
+              value: http://gitea-http.gitea:3000/login/oauth/userinfo
             - name: OIDC_USERNAME_CLAIM
               value: preferred_username
             - name: OIDC_DISPLAY_NAME
