@@ -72,11 +72,16 @@ talosctl apply-config --insecure --nodes NODE_IP_PLACEHOLDER --file talos/contro
 
 ### Step 2 — Restore tooling and repo
 
-On your Mac (use Gitea if available, GitHub mirror otherwise):
+On your Mac — the script auto-detects whether Gitea is up and falls back to the GitHub mirror if not:
 
 ```bash
 curl -s https://gitea.<tailnet>.ts.net/admin/talos-home/raw/branch/master/scripts/recover.sh | bash
-# or: curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh | bash
+```
+
+If Gitea itself is unreachable (total cluster loss), fetch from GitHub instead:
+
+```bash
+curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh | bash
 ```
 
 This fetches the talosconfig from 1Password, generates kubeconfig, and clones the repo to `~/talos`.
