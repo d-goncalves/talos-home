@@ -86,13 +86,17 @@ This fetches the talosconfig from 1Password, generates kubeconfig, and clones th
 kubectl apply -k ~/talos/kubernetes/flux
 ```
 
-Flux reconciles all apps automatically. Most app data is on NFS and survives node wipes.
+> **⚠️ Known limitation**: The Flux `GitRepository` source points to Gitea's internal cluster address (`gitea-ssh.gitea.svc.cluster.local`). On a fresh cluster Flux will deadlock — it can't sync because Gitea isn't deployed yet, and Gitea can't be deployed because Flux can't sync.
+>
+> **Fix**: Mirror this repo to GitHub and update the `GitRepository` URL to the GitHub remote. Until then, recovery requires manually patching the GitRepository URL to a reachable source after bootstrap, or deploying Gitea first by hand.
+
+Once Flux can sync, it reconciles all apps automatically. Most app data is on NFS and survives node wipes.
 
 ### What survives a full node wipe
 
 | Storage | Apps | Survives wipe? |
 |---|---|---|
-| NFS (Unifi NAS) | Jellyfin, Immich, Sonarr, Radarr, Prowlarr, Bazarr, qBittorrent, Audiobookshelf, Actual Budget, Wallos, Homebox, AdventureLog, Gitea, Outline, Grafana data | ✅ Yes |
+| NFS (Unifi NAS) | Jellyfin, Immich, Sonarr, Radarr, Prowlarr, Bazarr, qBittorrent, Audiobookshelf, Actual Budget, Wallos, Homebox, AdventureLog, Gitea, Outline | ✅ Yes |
 | local-path (node disk) | Uptime Kuma (monitors), Prometheus metrics, Grafana dashboards | ❌ No |
 
 ### Post-recovery manual steps
