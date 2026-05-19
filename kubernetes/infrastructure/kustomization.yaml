@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - tailscale-operator/
   - nfs-csi/
+  - coredns/

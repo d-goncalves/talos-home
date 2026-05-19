@@ -58,7 +58,7 @@ scripts/         # tooling
 - Tailscale and 1Password signed in on your Mac
 - The repo cloned locally, or accessible via GitHub mirror
 
-> **⚠️ Gitea dependency**: The recover script is hosted on Gitea, which runs on the cluster. If the cluster is gone, Gitea is unreachable. Either clone this repo to GitHub as a mirror, or store the recover script content in 1Password before you need it.
+> **Gitea dependency**: The recovery script is hosted on Gitea, which runs on the cluster. If the cluster is completely gone, use the GitHub mirror instead (same content, push-mirrored on every commit).
 
 ### Step 1 — Reinstall Talos on the new VM
 
@@ -68,14 +68,15 @@ In Proxmox, boot the new VM from the Talos ISO, then apply the machine config:
 talosctl apply-config --insecure --nodes NODE_IP_PLACEHOLDER --file talos/controlplane.yaml
 ```
 
-> The machine config is in this repo under `talos/`. Fetch it from 1Password or a GitHub mirror if Gitea is unavailable.
+> The machine config is in this repo under `talos/`. Fetch it from 1Password or the GitHub mirror if Gitea is unavailable.
 
 ### Step 2 — Restore tooling and repo
 
-On your Mac:
+On your Mac (use Gitea if available, GitHub mirror otherwise):
 
 ```bash
 curl -s https://gitea.<tailnet>.ts.net/admin/talos-home/raw/branch/master/scripts/recover.sh | bash
+# or: curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh | bash
 ```
 
 This fetches the talosconfig from 1Password, generates kubeconfig, and clones the repo to `~/talos`.
@@ -86,9 +87,9 @@ This fetches the talosconfig from 1Password, generates kubeconfig, and clones th
 kubectl apply -k ~/talos/kubernetes/flux
 ```
 
-> **⚠️ Known limitation**: The Flux `GitRepository` source points to Gitea's internal cluster address (`gitea-ssh.gitea.svc.cluster.local`). On a fresh cluster Flux will deadlock — it can't sync because Gitea isn't deployed yet, and Gitea can't be deployed because Flux can't sync.
->
-> **Fix**: Mirror this repo to GitHub and update the `GitRepository` URL to the GitHub remote. Until then, recovery requires manually patching the GitRepository URL to a reachable source after bootstrap, or deploying Gitea first by hand.
+Flux's `GitRepository` source points to `ssh://git@gitea-ssh.<tailnet>.ts.net` (the Tailscale address). CoreDNS has a rewrite rule that resolves this to the `gitea-ssh-tailscale` LoadBalancer service inside the cluster. On a fresh cluster the Tailscale Operator and Gitea must be running before Flux can sync — Flux will retry automatically once they come up.
+
+> **Bootstrap order**: Flux applies the infrastructure Kustomization first (Tailscale Operator, NFS CSI, CoreDNS patch), then apps. The Tailscale Operator will register the `gitea-ssh` proxy in the tailnet and Gitea will deploy. Flux retries every minute, so recovery is fully automatic — just wait a few minutes after bootstrap.
 
 Once Flux can sync, it reconciles all apps automatically. Most app data is on NFS and survives node wipes.
 
