@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: outline-postgres-data
+  namespace: outline
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: outline-postgres
+  namespace: outline
+spec:
+  serviceName: outline-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: outline-postgres
+  template:
+    metadata:
+      labels:
+        app: outline-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_DB
+              value: outline
+            - name: POSTGRES_USER
+              value: outline
+            - name: POSTGRES_PASSWORD
+              value: REDACTED_PG_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: outline-postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: outline-postgres
+  namespace: outline
+spec:
+  selector:
+    app: outline-postgres
+  ports:
+    - port: 5432

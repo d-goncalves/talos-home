@@ -78,6 +78,10 @@ data:
             href: https://gitea.<tailnet>.ts.net
             description: Git repositories
             icon: gitea.png
+        - Outline:
+            href: https://outline.<tailnet>.ts.net
+            description: Wiki & docs
+            icon: outline.png
         - Grafana:
             href: https://grafana.<tailnet>.ts.net
             description: Metrics & logs

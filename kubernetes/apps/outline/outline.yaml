@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: outline-data
+  namespace: outline
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: outline
+  namespace: outline
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: outline
+  template:
+    metadata:
+      labels:
+        app: outline
+    spec:
+      containers:
+        - name: outline
+          image: outlinewiki/outline:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: production
+            - name: SECRET_KEY
+              value: REDACTED_SECRET_KEY
+            - name: UTILS_SECRET
+              value: REDACTED_UTILS_SECRET
+            - name: DATABASE_URL
+              value: postgres://outline:REDACTED_PG_PASSWORD@outline-postgres:5432/outline
+            - name: PGSSLMODE
+              value: disable
+            - name: REDIS_URL
+              value: redis://outline-redis:6379
+            - name: URL
+              value: https://outline.<tailnet>.ts.net
+            - name: PORT
+              value: "3000"
+            - name: FORCE_HTTPS
+              value: "false"
+            - name: FILE_STORAGE
+              value: local
+            - name: FILE_STORAGE_LOCAL_ROOT_DIR
+              value: /var/lib/outline/data
+            - name: FILE_STORAGE_UPLOAD_MAX_SIZE
+              value: "26214400"
+            - name: OIDC_CLIENT_ID
+              value: 6f2912bd-bd44-4c5f-ad8e-338ced1dff5b
+            - name: OIDC_CLIENT_SECRET
+              value: REDACTED_OIDC_SECRET
+            - name: OIDC_AUTH_URI
+              value: https://gitea.<tailnet>.ts.net/login/oauth/authorize
+            - name: OIDC_TOKEN_URI
+              value: https://gitea.<tailnet>.ts.net/login/oauth/access_token
+            - name: OIDC_USERINFO_URI
+              value: https://gitea.<tailnet>.ts.net/login/oauth/userinfo
+            - name: OIDC_USERNAME_CLAIM
+              value: preferred_username
+            - name: OIDC_DISPLAY_NAME
+              value: Gitea
+            - name: OIDC_SCOPES
+              value: openid profile email
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/outline/data
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: outline-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: outline
+  namespace: outline
+spec:
+  selector:
+    app: outline
+  ports:
+    - port: 3000
