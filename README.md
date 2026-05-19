@@ -107,3 +107,4 @@ After Flux reconciles, the following need manual reconfiguration if the node was
 - **Uptime Kuma** — monitors need to be re-added in the UI
 - **Ntfy** — admin user is recreated automatically by init container ✅
 - **Servarr apps** — Sonarr/Radarr/Prowlarr/Bazarr config is on NFS, should restore automatically ✅
+
