@@ -92,14 +92,14 @@ Flux reconciles all apps automatically. Most app data is on NFS and survives nod
 
 | Storage | Apps | Survives wipe? |
 |---|---|---|
-| NFS (Unifi NAS) | Jellyfin, Immich, Sonarr, Radarr, Prowlarr, Bazarr, qBittorrent, Audiobookshelf, Actual Budget, Wallos, Homebox, AdventureLog, Gitea, Grafana data | ✅ Yes |
-| local-path (node disk) | Outline (wiki content + postgres), Uptime Kuma (monitors), Prometheus metrics, Grafana dashboards | ❌ No |
+| NFS (Unifi NAS) | Jellyfin, Immich, Sonarr, Radarr, Prowlarr, Bazarr, qBittorrent, Audiobookshelf, Actual Budget, Wallos, Homebox, AdventureLog, Gitea, Outline, Grafana data | ✅ Yes |
+| local-path (node disk) | Uptime Kuma (monitors), Prometheus metrics, Grafana dashboards | ❌ No |
 
 ### Post-recovery manual steps
 
 After Flux reconciles, the following need manual reconfiguration if the node was wiped:
 
-- **Outline** — all wiki content is lost; recreate from scratch
+- **Outline** — data is on NFS, restores automatically ✅
 - **Uptime Kuma** — monitors need to be re-added in the UI
 - **Ntfy** — admin user is recreated automatically by init container ✅
 - **Servarr apps** — Sonarr/Radarr/Prowlarr/Bazarr config is on NFS, should restore automatically ✅
