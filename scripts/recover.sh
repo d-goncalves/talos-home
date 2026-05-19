@@ -2,8 +2,9 @@
 set -euo pipefail
 
 TALOS_ENDPOINT="NODE_IP_PLACEHOLDER"
-GITEA_REPO="https://gitea.<tailnet>.ts.net/admin/talos-home.git"
-GITEA_RAW="https://gitea.<tailnet>.ts.net/admin/talos-home/raw/branch/master"
+GITEA_HOST="gitea.<tailnet>.ts.net"
+GITEA_REPO="https://${GITEA_HOST}/admin/talos-home.git"
+GITHUB_REPO="https://github.com/d-goncalves/talos-home.git"
 REPO_DIR="$HOME/talos"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
@@ -88,8 +89,14 @@ echo ""
 if [[ -d "$REPO_DIR" ]]; then
   warn "Repo already exists at $REPO_DIR, skipping clone"
 else
-  info "Cloning repository..."
-  git clone "$GITEA_REPO" "$REPO_DIR"
+  if curl -sf --max-time 5 "https://${GITEA_HOST}" > /dev/null 2>&1; then
+    info "Gitea is reachable — cloning from Gitea..."
+    CLONE_URL="$GITEA_REPO"
+  else
+    warn "Gitea unreachable — falling back to GitHub mirror..."
+    CLONE_URL="$GITHUB_REPO"
+  fi
+  git clone "$CLONE_URL" "$REPO_DIR"
   success "Repo cloned to $REPO_DIR"
 fi
 
