@@ -6,16 +6,14 @@ metadata:
 data:
   settings.yaml: |
     title: Home
-    background:
-      blur: sm
-      saturate: 50
     theme: dark
     color: slate
     headerStyle: clean
+    customCSS: /app/config/custom.css
     layout:
       Media:
         style: row
-        columns: 3
+        columns: 4
       Finance:
         style: row
         columns: 3
@@ -31,18 +29,22 @@ data:
 
   services.yaml: |
     - Media:
+        - Jellyfin:
+            href: https://jellyfin.<tailnet>.ts.net
+            description: Media server
+            icon: jellyfin.png
+        - Jellyseerr:
+            href: https://jellyseerr.<tailnet>.ts.net
+            description: Request movies & TV
+            icon: jellyseerr.png
         - Immich:
             href: https://immich.<tailnet>.ts.net
             description: Photo library
             icon: immich.png
         - Audiobookshelf:
             href: https://audiobookshelf.<tailnet>.ts.net
-            description: Audiobooks
+            description: Audiobooks & podcasts
             icon: audiobookshelf.png
-        - Jellyfin:
-            href: https://jellyfin.<tailnet>.ts.net
-            description: Media server
-            icon: jellyfin.png
 
     - Finance:
         - Actual Budget:
@@ -51,7 +53,7 @@ data:
             icon: actual-budget.png
         - Wallos:
             href: https://wallos.<tailnet>.ts.net
-            description: Subscriptions
+            description: Subscription tracker
             icon: wallos.png
 
     - Tools:
@@ -62,7 +64,7 @@ data:
         - AdventureLog:
             href: https://adventurelog.<tailnet>.ts.net
             description: Travel tracker
-            icon: adventurelog.png
+            icon: mdi-map-marker-path
         - IT Tools:
             href: https://it-tools.<tailnet>.ts.net
             description: Developer utilities
@@ -70,17 +72,37 @@ data:
         - BentoPDF:
             href: https://bentopdf.<tailnet>.ts.net
             description: PDF toolkit
-            icon: pdf.png
+            icon: mdi-file-pdf-box
 
     - Infrastructure:
         - Gitea:
             href: https://gitea.<tailnet>.ts.net
-            description: Git server
+            description: Git repositories
             icon: gitea.png
         - Grafana:
             href: https://grafana.<tailnet>.ts.net
-            description: Monitoring
+            description: Metrics & logs
             icon: grafana.png
+        - Prowlarr:
+            href: https://prowlarr.<tailnet>.ts.net
+            description: Indexer manager
+            icon: prowlarr.png
+        - qBittorrent:
+            href: https://qbittorrent.<tailnet>.ts.net
+            description: Torrent client
+            icon: qbittorrent.png
+        - Sonarr:
+            href: https://sonarr.<tailnet>.ts.net
+            description: TV shows
+            icon: sonarr.png
+        - Radarr:
+            href: https://radarr.<tailnet>.ts.net
+            description: Movies
+            icon: radarr.png
+        - Bazarr:
+            href: https://bazarr.<tailnet>.ts.net
+            description: Subtitles
+            icon: bazarr.png
         - WatchYourLAN:
             href: https://watchyourlan.<tailnet>.ts.net
             description: Network monitor
@@ -110,7 +132,82 @@ data:
           timeStyle: short
 
   kubernetes.yaml: |
-    mode: cluster
+    mode: disabled
 
   docker.yaml: |
     {}
+
+  custom.css: |
+    /* ── Background ── */
+    body {
+      background: radial-gradient(ellipse at 20% 50%, #1a0533 0%, #0d0d18 45%, #060610 100%) fixed !important;
+    }
+
+    /* ── Glassmorphism cards ── */
+    #app .rounded-md,
+    #app .rounded-lg {
+      background: rgba(255, 255, 255, 0.04) !important;
+      backdrop-filter: blur(16px) !important;
+      -webkit-backdrop-filter: blur(16px) !important;
+      border: 1px solid rgba(255, 255, 255, 0.07) !important;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease !important;
+    }
+
+    #app .rounded-md:hover,
+    #app .rounded-lg:hover {
+      background: rgba(139, 92, 246, 0.1) !important;
+      border-color: rgba(139, 92, 246, 0.3) !important;
+      transform: translateY(-1px) !important;
+    }
+
+    /* ── Section headers ── */
+    #app h2 {
+      background: linear-gradient(90deg, #a78bfa, #60a5fa) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.05em !important;
+      text-transform: uppercase !important;
+      font-size: 0.8rem !important;
+    }
+
+    /* ── Status badges (RUNNING / PARTIAL) ── */
+    #app .rounded-full {
+      font-size: 0.6rem !important;
+      letter-spacing: 0.08em !important;
+    }
+
+    /* ── Service name text ── */
+    #app .service-name,
+    #app .font-semibold {
+      color: rgba(255, 255, 255, 0.9) !important;
+    }
+
+    /* ── Description text ── */
+    #app .font-thin,
+    #app .text-theme-600 {
+      color: rgba(255, 255, 255, 0.45) !important;
+    }
+
+    /* ── Top bar / header ── */
+    #app header {
+      background: rgba(6, 6, 16, 0.7) !important;
+      backdrop-filter: blur(20px) !important;
+      border-bottom: 1px solid rgba(139, 92, 246, 0.15) !important;
+    }
+
+    /* ── Widget containers ── */
+    #app .information-widget {
+      background: rgba(255, 255, 255, 0.03) !important;
+      border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(139, 92, 246, 0.4);
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(139, 92, 246, 0.7); }
