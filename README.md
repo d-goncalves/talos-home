@@ -16,17 +16,26 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 
 | App | Purpose |
 |---|---|
+| [Jellyfin](https://jellyfin.org) | Media server |
+| [Jellyseerr](https://github.com/Fallenbagel/jellyseerr) | Media requests |
+| [Sonarr](https://sonarr.tv) | TV show management |
+| [Radarr](https://radarr.video) | Movie management |
+| [Prowlarr](https://github.com/Prowlarr/Prowlarr) | Indexer manager |
+| [Bazarr](https://www.bazarr.media) | Subtitles |
+| [qBittorrent](https://qbittorrent.org) | Torrent client (via Gluetun VPN) |
 | [Immich](https://immich.app) | Photo library |
-| [Audiobookshelf](https://audiobookshelf.org) | Audiobooks |
+| [Audiobookshelf](https://audiobookshelf.org) | Audiobooks & podcasts |
 | [Actual Budget](https://actualbudget.org) | Personal finance |
 | [Wallos](https://wallosapp.com) | Subscription tracker |
 | [AdventureLog](https://adventurelog.app) | Travel tracker |
 | [Homebox](https://homebox.software) | Home inventory |
-| [Homarr](https://homarr.dev) | Dashboard |
-| [WatchYourLAN](https://github.com/aceberg/WatchYourLAN) | Network monitor |
-| [LibreSpeed](https://librespeed.org) | Speed test |
 | [IT Tools](https://it-tools.tech) | Developer utilities |
 | [BentoPDF](https://bentopdf.com) | PDF toolkit |
+| [Homepage](https://gethomepage.dev) | Dashboard |
+| [Gitea](https://gitea.io) | Git repositories |
+| [WatchYourLAN](https://github.com/aceberg/WatchYourLAN) | Network monitor |
+| [LibreSpeed](https://librespeed.org) | Speed test |
+| [Docmost](https://docmost.com) | Wiki & docs |
 | Grafana + Loki + Prometheus | Monitoring |
 
 ## Repo structure
