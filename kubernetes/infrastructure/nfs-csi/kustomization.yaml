@@ -13,3 +13,4 @@ resources:
   - storageclass-immich-postgres.yaml
   - storageclass-wallos.yaml
   - storageclass-watchyourlan.yaml
+  - storageclass-outline.yaml
