@@ -15,3 +15,5 @@ resources:
   - it-tools/
   - homepage/
   - servarr/
+  - uptime-kuma/
+  - ntfy/

@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ntfy-data
+  namespace: ntfy
+spec:
+  storageClassName: local-path
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ntfy-config
+  namespace: ntfy
+data:
+  server.yml: |
+    base-url: https://ntfy.<tailnet>.ts.net
+    cache-file: /var/cache/ntfy/cache.db
+    auth-file: /var/lib/ntfy/auth.db
+    auth-default-access: deny-all
+    behind-proxy: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy
+  namespace: ntfy
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: ntfy
+  template:
+    metadata:
+      labels:
+        app: ntfy
+    spec:
+      containers:
+        - name: ntfy
+          image: binwiederhier/ntfy:latest
+          args: ["serve"]
+          ports:
+            - containerPort: 80
+          env:
+            - name: TZ
+              value: Europe/Lisbon
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/ntfy
+            - name: cache
+              mountPath: /var/cache/ntfy
+            - name: config
+              mountPath: /etc/ntfy/server.yml
+              subPath: server.yml
+          resources:
+            requests:
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ntfy-data
+        - name: cache
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: ntfy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntfy
+  namespace: ntfy
+spec:
+  selector:
+    app: ntfy
+  ports:
+    - port: 80
