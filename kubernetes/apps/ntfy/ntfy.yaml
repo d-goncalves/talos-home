@@ -24,6 +24,15 @@ data:
     auth-default-access: deny-all
     behind-proxy: true
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ntfy-admin
+  namespace: ntfy
+type: Opaque
+stringData:
+  password: "REDACTED"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -41,6 +50,30 @@ spec:
       labels:
         app: ntfy
     spec:
+      initContainers:
+        - name: create-admin
+          image: binwiederhier/ntfy:latest
+          command:
+            - sh
+            - -c
+            - |
+              if ntfy user list --config /etc/ntfy/server.yml 2>/dev/null | grep -q "^diogo"; then
+                echo "User already exists, skipping"
+              else
+                printf '%s\n%s\n' "$NTFY_ADMIN_PASSWORD" "$NTFY_ADMIN_PASSWORD" | ntfy user add --role=admin --config /etc/ntfy/server.yml diogo
+              fi
+          env:
+            - name: NTFY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ntfy-admin
+                  key: password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/ntfy
+            - name: config
+              mountPath: /etc/ntfy/server.yml
+              subPath: server.yml
       containers:
         - name: ntfy
           image: binwiederhier/ntfy:latest
