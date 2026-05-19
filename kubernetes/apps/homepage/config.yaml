@@ -110,6 +110,14 @@ data:
             href: https://librespeed.<tailnet>.ts.net
             description: Speed test
             icon: librespeed.png
+        - Uptime Kuma:
+            href: https://uptime-kuma.<tailnet>.ts.net
+            description: Uptime monitoring
+            icon: uptime-kuma.png
+        - Ntfy:
+            href: https://ntfy.<tailnet>.ts.net
+            description: Push notifications
+            icon: ntfy.png
 
   widgets.yaml: |
     []
