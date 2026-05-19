@@ -9,6 +9,11 @@ data:
     theme: dark
     color: zinc
     headerStyle: clean
+    background:
+      image: /images/background.jpg
+      blur: sm
+      saturate: 50
+      opacity: 30
     layout:
       Media:
         style: row
@@ -133,19 +138,7 @@ data:
     {}
 
   custom.css: |
-    /* ── Background: subtle gradient, mostly solid dark ── */
-    html::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      background:
-        radial-gradient(ellipse 70% 50% at 100% 0%, rgba(80, 20, 140, 0.2) 0%, transparent 55%),
-        radial-gradient(ellipse 60% 40% at 0% 100%, rgba(20, 40, 120, 0.15) 0%, transparent 55%),
-        #09090f;
-    }
-
-    /* Make page wrapper transparent */
+    /* Make page wrapper transparent so background image shows through */
     html, body, #__next, main {
       background: transparent !important;
     }
