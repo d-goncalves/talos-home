@@ -27,6 +27,10 @@ spec:
       labels:
         app: outline-postgres
     spec:
+      securityContext:
+        runAsUser: 977
+        runAsGroup: 988
+        fsGroup: 988
       containers:
         - name: postgres
           image: postgres:16
