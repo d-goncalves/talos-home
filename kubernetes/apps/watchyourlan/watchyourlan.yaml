@@ -18,6 +18,8 @@ metadata:
   namespace: watchyourlan
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: watchyourlan
