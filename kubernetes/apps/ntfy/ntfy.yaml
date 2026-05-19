@@ -57,10 +57,10 @@ spec:
             - sh
             - -c
             - |
-              if ntfy --config /etc/ntfy/server.yml user list 2>/dev/null | grep -q "^diogo"; then
+              if ntfy user list 2>/dev/null | grep -q "^diogo"; then
                 echo "User already exists, skipping"
               else
-                printf '%s\n%s\n' "$NTFY_ADMIN_PASSWORD" "$NTFY_ADMIN_PASSWORD" | ntfy --config /etc/ntfy/server.yml user add --role=admin diogo
+                printf '%s\n%s\n' "$NTFY_ADMIN_PASSWORD" "$NTFY_ADMIN_PASSWORD" | ntfy user add --role=admin diogo
               fi
           env:
             - name: NTFY_ADMIN_PASSWORD
