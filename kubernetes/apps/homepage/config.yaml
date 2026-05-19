@@ -121,65 +121,53 @@ data:
     {}
 
   custom.css: |
-    /* ── Background: layered radial gradients over near-black ── */
+    /* ── Background: subtle gradient, mostly solid dark ── */
     html::before {
       content: "";
       position: fixed;
       inset: 0;
       z-index: -1;
       background:
-        radial-gradient(ellipse 60% 40% at 15% 25%, rgba(99, 30, 160, 0.35) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 40% at 85% 75%, rgba(20, 50, 140, 0.25) 0%, transparent 60%),
-        radial-gradient(ellipse 80% 60% at 50% 110%, rgba(10, 30, 80, 0.4) 0%, transparent 60%),
-        #07070f;
+        radial-gradient(ellipse 70% 50% at 100% 0%, rgba(80, 20, 140, 0.2) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 40% at 0% 100%, rgba(20, 40, 120, 0.15) 0%, transparent 55%),
+        #09090f;
     }
 
-    /* Make the page wrapper transparent so the pseudo-element shows */
+    /* Make page wrapper transparent */
     html, body, #__next, main {
       background: transparent !important;
     }
 
-    /* ── Service cards ── */
+    /* ── Service cards: opaque enough to be consistent everywhere ── */
     .service-card {
-      background: rgba(255, 255, 255, 0.045) !important;
-      border: 1px solid rgba(255, 255, 255, 0.08) !important;
-      backdrop-filter: blur(12px) !important;
-      -webkit-backdrop-filter: blur(12px) !important;
+      background: rgba(18, 18, 30, 0.85) !important;
+      border: 1px solid rgba(255, 255, 255, 0.07) !important;
       transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, transform 0.15s !important;
     }
 
     .service-card:hover {
-      background: rgba(120, 60, 220, 0.12) !important;
-      border-color: rgba(150, 80, 255, 0.35) !important;
-      box-shadow: 0 0 20px rgba(120, 60, 220, 0.15) !important;
+      background: rgba(30, 20, 55, 0.95) !important;
+      border-color: rgba(150, 80, 255, 0.4) !important;
+      box-shadow: 0 4px 24px rgba(100, 40, 200, 0.18) !important;
       transform: translateY(-2px) !important;
     }
 
-    /* ── Section group headers ── */
-    #information-widgets ~ div h2,
-    .services-group > h2,
+    /* ── Section headers ── */
     h2 {
       color: transparent !important;
-      background: linear-gradient(90deg, #c084fc 0%, #818cf8 50%, #60a5fa 100%) !important;
+      background: linear-gradient(90deg, #a855f7 0%, #818cf8 60%, #60a5fa 100%) !important;
       -webkit-background-clip: text !important;
       background-clip: text !important;
-      font-size: 0.7rem !important;
+      font-size: 0.68rem !important;
       font-weight: 700 !important;
-      letter-spacing: 0.12em !important;
+      letter-spacing: 0.14em !important;
       text-transform: uppercase !important;
-    }
-
-    /* ── Widget bar (datetime) ── */
-    #information-widgets {
-      background: rgba(255, 255, 255, 0.03) !important;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
-      backdrop-filter: blur(12px) !important;
     }
 
     /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb {
-      background: rgba(130, 80, 240, 0.5);
+      background: rgba(130, 80, 240, 0.4);
       border-radius: 4px;
     }
