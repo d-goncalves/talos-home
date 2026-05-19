@@ -39,10 +39,6 @@ spec:
       labels:
         app: wallos
     spec:
-      securityContext:
-        runAsUser: 977
-        runAsGroup: 988
-        fsGroup: 988
       containers:
         - name: wallos
           image: bellamy/wallos:latest
@@ -51,13 +47,15 @@ spec:
           env:
             - name: TZ
               value: Europe/Lisbon
+            - name: PUID
+              value: "977"
+            - name: PGID
+              value: "988"
           volumeMounts:
             - name: db
               mountPath: /var/www/html/db
             - name: uploads
               mountPath: /var/www/html/images/uploads
-            - name: varlog
-              mountPath: /var/log
       volumes:
         - name: db
           persistentVolumeClaim:
@@ -65,8 +63,6 @@ spec:
         - name: uploads
           persistentVolumeClaim:
             claimName: wallos-uploads-nfs
-        - name: varlog
-          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
