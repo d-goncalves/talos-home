@@ -40,7 +40,10 @@ spec:
             - name: POSTGRES_USER
               value: adventurelog
             - name: POSTGRES_PASSWORD
-              value: adventurelog
+              valueFrom:
+                secretKeyRef:
+                  name: adventurelog-secrets
+                  key: POSTGRES_PASSWORD
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
