@@ -58,7 +58,7 @@ graph TB
         GH["GitHub\n(mirror)"]
     end
 
-    subgraph NODE["🖥️ Talos Linux — NODE_IP_PLACEHOLDER (Proxmox VM)"]
+    subgraph NODE["🖥️ Talos Linux — &lt;node-ip&gt; (Proxmox VM)"]
 
         subgraph GITOPS["GitOps Layer"]
             GITEA["Gitea\n(source of truth)"]
@@ -113,7 +113,7 @@ graph TB
         end
     end
 
-    subgraph NAS["🗄️ Unifi NAS — NAS_IP_PLACEHOLDER"]
+    subgraph NAS["🗄️ Unifi NAS — &lt;nas-ip&gt;"]
         NFS_SRV["NFS Server"]
     end
 
@@ -201,7 +201,7 @@ scripts/         # tooling
 In Proxmox, boot the new VM from the Talos ISO, then apply the machine config:
 
 ```bash
-talosctl apply-config --insecure --nodes NODE_IP_PLACEHOLDER --file talos/controlplane.yaml
+talosctl apply-config --insecure --nodes <node-ip> --file talos/controlplane.yaml
 ```
 
 > The machine config is in this repo under `talos/`. Fetch it from 1Password or the GitHub mirror if Gitea is unavailable.
