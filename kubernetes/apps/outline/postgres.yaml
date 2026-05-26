@@ -40,7 +40,10 @@ spec:
             - name: POSTGRES_USER
               value: outline
             - name: POSTGRES_PASSWORD
-              value: "REDACTED"
+              valueFrom:
+                secretKeyRef:
+                  name: outline-secrets
+                  key: POSTGRES_PASSWORD
           volumeMounts:
             - name: data
               mountPath: /var/lib/postgresql/data
