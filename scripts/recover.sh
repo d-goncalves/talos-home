@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TALOS_ENDPOINT="NODE_IP_PLACEHOLDER"
 GITHUB_REPO="https://github.com/d-goncalves/talos-home.git"
 REPO_DIR="$HOME/talos"
+
+# ── Node IP ────────────────────────────────────────────────────────────────────
+# Set NODE_IP in the environment, or the script will prompt.
+if [[ -z "${NODE_IP:-}" ]]; then
+  read -rp "Enter your Talos node IP (e.g. 192.168.1.10): " NODE_IP
+fi
+TALOS_ENDPOINT="$NODE_IP"
+
+# ── NAS IP ─────────────────────────────────────────────────────────────────────
+# Set NAS_IP in the environment, or the script will prompt.
+if [[ -z "${NAS_IP:-}" ]]; then
+  read -rp "Enter your NAS IP (e.g. 192.168.1.20): " NAS_IP
+fi
+
+# ── LAN subnet ─────────────────────────────────────────────────────────────────
+# Set LAN_SUBNET in the environment, or the script will prompt.
+if [[ -z "${LAN_SUBNET:-}" ]]; then
+  read -rp "Enter your LAN subnet (e.g. 192.168.1.0/24): " LAN_SUBNET
+fi
 
 # ── Tailnet domain ─────────────────────────────────────────────────────────────
 # Set TAILNET_DOMAIN in the environment, or the script will prompt.
@@ -120,8 +138,11 @@ else
   kubectl create namespace flux-system --dry-run=client -o yaml | kubectl apply -f -
   kubectl create secret generic cluster-vars \
     --from-literal=TAILNET_DOMAIN="${GITEA_HOST#gitea.}" \
+    --from-literal=NODE_IP="${NODE_IP}" \
+    --from-literal=NAS_IP="${NAS_IP}" \
+    --from-literal=LAN_SUBNET="${LAN_SUBNET}" \
     --namespace flux-system
-  success "cluster-vars secret created (TAILNET_DOMAIN=${GITEA_HOST#gitea.})"
+  success "cluster-vars secret created (TAILNET_DOMAIN=${GITEA_HOST#gitea.}, NODE_IP=${NODE_IP}, NAS_IP=${NAS_IP}, LAN_SUBNET=${LAN_SUBNET})"
 fi
 
 # ── Clone repo ────────────────────────────────────────────────────────────────

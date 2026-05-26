@@ -7,6 +7,7 @@ Output:  docs/architecture.png
 """
 
 import math
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -20,6 +21,9 @@ from diagrams.onprem.vcs import Github
 from diagrams.generic.storage import Storage
 
 ICONS = Path("/tmp/diagram_icons")
+
+NODE_IP = os.environ.get("NODE_IP", "<node-ip>")
+NAS_IP  = os.environ.get("NAS_IP",  "<nas-ip>")
 
 # ── Helper: build a grid tile from multiple app icons ─────────────────────────
 
@@ -103,7 +107,7 @@ with Diagram(
         gh = icon("github",      "GitHub\nmirror")
 
     # ── Talos cluster ─────────────────────────────────────────────────────────
-    with Cluster("Talos Linux · NODE_IP_PLACEHOLDER (Proxmox VM)", graph_attr=outer_cluster):
+    with Cluster(f"Talos Linux · {NODE_IP} (Proxmox VM)", graph_attr=outer_cluster):
 
         with Cluster("GitOps", graph_attr=cluster_attr):
             gitea = icon("gitea",  "Gitea")
@@ -140,7 +144,7 @@ with Diagram(
             local_pvc = PV("local-path\n(node only)")
 
     # ── NAS ───────────────────────────────────────────────────────────────────
-    with Cluster("Unifi NAS · NAS_IP_PLACEHOLDER", graph_attr=cluster_attr):
+    with Cluster(f"Unifi NAS · {NAS_IP}", graph_attr=cluster_attr):
         nas = Storage("NFS Server")
 
     # ── Tailscale Network (outside the cluster — your devices connect here) ───

@@ -1,12 +1,14 @@
+# Replace <node-ip>, <gateway-ip> with your actual network values before applying.
+# This file is NOT processed by Flux — edit directly and apply with talosctl.
 machine:
   network:
     interfaces:
       - interface: ens18
         addresses:
-          - NODE_IP_PLACEHOLDER/24
+          - <node-ip>/24
         routes:
           - network: 0.0.0.0/0
-            gateway: 192.168.1.1
+            gateway: <gateway-ip>
         dhcp: false
     nameservers:
-      - 192.168.1.1
+      - <gateway-ip>

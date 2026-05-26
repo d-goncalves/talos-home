@@ -6,7 +6,7 @@ metadata:
     storageclass.kubernetes.io/is-default-class: "false"
 provisioner: nfs.csi.k8s.io
 parameters:
-  server: NAS_IP_PLACEHOLDER
+  server: ${NAS_IP}
   share: /volume/NAS_DATA_PATH_PLACEHOLDER/watchyourlan
 reclaimPolicy: Retain
 volumeBindingMode: Immediate

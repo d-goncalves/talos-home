@@ -9,7 +9,7 @@ spec:
     - ReadWriteMany
   persistentVolumeReclaimPolicy: Retain
   nfs:
-    server: NAS_IP_PLACEHOLDER
+    server: ${NAS_IP}
     path: /volume/NAS_DATA_PATH_PLACEHOLDER/actual
   mountOptions:
     - nfsvers=3
