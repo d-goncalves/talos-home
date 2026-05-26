@@ -10,4 +10,7 @@ spec:
   secretRef:
     name: flux-system
   timeout: 60s
-  url: ssh://git@gitea-ssh.<tailnet>.ts.net/admin/talos-home.git
+  # Bootstrap-only: this URL must be a real address. It cannot use Flux variable
+  # substitution because the GitRepository source is what Flux reads first.
+  # When forking, replace this with your own Gitea SSH address.
+  url: ssh://git@gitea-ssh.coyote-aeolian.ts.net/admin/talos-home.git
