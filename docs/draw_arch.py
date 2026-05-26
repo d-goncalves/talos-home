@@ -1,9 +1,9 @@
 """
 Architecture diagram for talos-home.
-Requires: pip install diagrams pillow graphviz
-Icons:    downloaded to /tmp/diagram_icons from walkxcode/dashboard-icons
-Run:      python3 docs/draw_arch.py
-Output:   docs/architecture.png
+Install: pip install -r docs/requirements.txt
+Icons:   downloaded to /tmp/diagram_icons from walkxcode/dashboard-icons
+Run:     python3 docs/draw_arch.py
+Output:  docs/architecture.png
 """
 
 import math
