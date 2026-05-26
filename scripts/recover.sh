@@ -130,6 +130,26 @@ else
   fi
 fi
 
+# ── Generate Tailscale patch files from 1Password ────────────────────────────
+info "Generating Tailscale patch files..."
+TS_AUTHKEY=$(op item get "Tailscale Auth Key - talos-home" --vault "Server Infrastructure" --fields authkey --reveal 2>/dev/null || true)
+if [[ -z "$TS_AUTHKEY" ]]; then
+  warn "Could not fetch Tailscale auth key from 1Password."
+  warn "Create an item named 'Tailscale Auth Key - talos-home' in the 'Server Infrastructure' vault"
+  warn "with a field named 'authkey', then re-run this script."
+  warn "Skipping Tailscale patch generation — apply manually when ready."
+else
+  REPO_PATCHES="$(dirname "$0")/../talos/patches"
+  sed \
+    -e "s|REPLACE_TS_AUTHKEY|${TS_AUTHKEY}|g" \
+    -e "s|REPLACE_LAN_SUBNET|${LAN_SUBNET}|g" \
+    "${REPO_PATCHES}/tailscale-ext.yaml.template" > "${REPO_PATCHES}/tailscale-ext.yaml"
+  sed \
+    -e "s|tskey-auth-REPLACE_ME|${TS_AUTHKEY}|g" \
+    "${REPO_PATCHES}/tailscale.yaml.template" > "${REPO_PATCHES}/tailscale.yaml"
+  success "tailscale-ext.yaml and tailscale.yaml generated (gitignored)"
+fi
+
 # ── Bootstrap cluster-vars (Flux variable substitution) ───────────────────────
 info "Bootstrapping cluster-vars secret..."
 if kubectl get secret cluster-vars -n flux-system &>/dev/null; then
