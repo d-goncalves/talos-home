@@ -113,21 +113,18 @@ with Diagram(
         with Cluster("Media", graph_attr=cluster_attr):
             media = tile(
                 ["jellyfin", "sonarr", "radarr", "prowlarr", "bazarr", "qbittorrent"],
-                label="Jellyfin · Sonarr · Radarr\nProwlarr · Bazarr · qBittorrent",
                 cols=3,
             )
 
         with Cluster("Personal", graph_attr=cluster_attr):
             personal = tile(
                 ["immich", "actual-budget", "audiobookshelf", "wallos", "adventurelog", "homebox"],
-                label="Immich · Actual Budget · Audiobookshelf\nWallos · AdventureLog · Homebox",
                 cols=3,
             )
 
         with Cluster("Infrastructure Apps", graph_attr=cluster_attr):
             infra_apps = tile(
                 ["gitea", "outline", "grafana", "ntfy", "uptime-kuma", "homepage", "it-tools"],
-                label="Gitea · Outline · Grafana · ntfy\nUptime Kuma · Homepage · IT Tools",
                 cols=4,
             )
 
