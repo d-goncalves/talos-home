@@ -39,7 +39,7 @@ spec:
   data:
     - secretKey: password
       remoteRef:
-        key: "op://Server Infrastructure/ntfy/password"
+        key: "op://ily3urjfxbmth2orlezhnq4xqi/ntfy/password"
 ---
 apiVersion: apps/v1
 kind: Deployment
