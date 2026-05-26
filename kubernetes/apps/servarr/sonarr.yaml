@@ -21,10 +21,10 @@ spec:
             - |
               mkdir -p /config
               if [ ! -f /config/config.xml ]; then
-                cat > /config/config.xml <<'XML'
+                cat > /config/config.xml <<XML
               <Config>
                 <InstanceName>Sonarr</InstanceName>
-                <ApiKey>REDACTED_SONARR_API_KEY</ApiKey>
+                <ApiKey>${SONARR_API_KEY}</ApiKey>
                 <AuthenticationMethod>Forms</AuthenticationMethod>
                 <AuthenticationRequired>Enabled</AuthenticationRequired>
                 <Branch>main</Branch>
@@ -34,6 +34,12 @@ spec:
               </Config>
               XML
               fi
+          env:
+            - name: SONARR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: servarr-secrets
+                  key: SONARR_API_KEY
           volumeMounts:
             - name: config
               mountPath: /config
