@@ -12,8 +12,8 @@ git config --global user.email "124159934+d-goncalves@users.noreply.github.com"
 git config --global commit.gpgsign    true
 git config --global tag.gpgsign       true
 git config --global gpg.format        ssh
-git config --global user.signingkey   "REDACTED_SIGNING_KEY"
 git config --global gpg.ssh.program   "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+# user.signingkey is set automatically by 1Password — open 1Password → Settings → Developer → SSH Agent
 
 # ── Node IP ────────────────────────────────────────────────────────────────────
 # Set NODE_IP in the environment, or the script will prompt.
