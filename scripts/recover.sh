@@ -23,6 +23,13 @@ if [[ -z "${LAN_SUBNET:-}" ]]; then
   read -rp "Enter your LAN subnet (e.g. 192.168.1.0/24): " LAN_SUBNET
 fi
 
+# ── NAS data path ──────────────────────────────────────────────────────────────
+# Base path on the NAS where per-app data directories live.
+# Set NAS_DATA_PATH in the environment, or the script will prompt.
+if [[ -z "${NAS_DATA_PATH:-}" ]]; then
+  read -rp "Enter your NAS data base path (e.g. /volume/my-vol/.data): " NAS_DATA_PATH
+fi
+
 # ── Tailnet domain ─────────────────────────────────────────────────────────────
 # Set TAILNET_DOMAIN in the environment, or the script will prompt.
 # Example: TAILNET_DOMAIN=my-tailnet.ts.net bash <(curl -s <url>/recover.sh)
@@ -161,8 +168,9 @@ else
     --from-literal=NODE_IP="${NODE_IP}" \
     --from-literal=NAS_IP="${NAS_IP}" \
     --from-literal=LAN_SUBNET="${LAN_SUBNET}" \
+    --from-literal=NAS_DATA_PATH="${NAS_DATA_PATH}" \
     --namespace flux-system
-  success "cluster-vars secret created (TAILNET_DOMAIN=${GITEA_HOST#gitea.}, NODE_IP=${NODE_IP}, NAS_IP=${NAS_IP}, LAN_SUBNET=${LAN_SUBNET})"
+  success "cluster-vars secret created (TAILNET_DOMAIN=${GITEA_HOST#gitea.}, NODE_IP=${NODE_IP}, NAS_IP=${NAS_IP}, LAN_SUBNET=${LAN_SUBNET}, NAS_DATA_PATH=${NAS_DATA_PATH})"
 fi
 
 # ── Clone repo ────────────────────────────────────────────────────────────────

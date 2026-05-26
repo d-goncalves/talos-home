@@ -7,7 +7,7 @@ metadata:
 provisioner: nfs.csi.k8s.io
 parameters:
   server: ${NAS_IP}
-  share: /volume/NAS_DATA_PATH_PLACEHOLDER/homarr
+  share: ${NAS_DATA_PATH}/homarr
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
 mountOptions:
