@@ -10,7 +10,7 @@ metadata:
     gethomepage.dev/description: "Metrics & logs"
     gethomepage.dev/group: "Infrastructure"
     gethomepage.dev/icon: "grafana"
-    gethomepage.dev/href: "https://grafana.<tailnet>.ts.net"
+    gethomepage.dev/href: "https://grafana.${TAILNET_DOMAIN}"
 spec:
   ingressClassName: tailscale
   rules:

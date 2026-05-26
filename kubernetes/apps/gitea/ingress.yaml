@@ -10,7 +10,7 @@ metadata:
     gethomepage.dev/description: "Git repositories"
     gethomepage.dev/group: "Infrastructure"
     gethomepage.dev/icon: "gitea"
-    gethomepage.dev/href: "https://gitea.<tailnet>.ts.net"
+    gethomepage.dev/href: "https://gitea.${TAILNET_DOMAIN}"
     gethomepage.dev/pod-selector: "app=gitea"
 spec:
   ingressClassName: tailscale

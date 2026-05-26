@@ -10,7 +10,7 @@ metadata:
     gethomepage.dev/description: "Subscription tracker"
     gethomepage.dev/group: "Finance"
     gethomepage.dev/icon: "wallos"
-    gethomepage.dev/href: "https://wallos.<tailnet>.ts.net"
+    gethomepage.dev/href: "https://wallos.${TAILNET_DOMAIN}"
     gethomepage.dev/pod-selector: "app=wallos"
 spec:
   ingressClassName: tailscale
