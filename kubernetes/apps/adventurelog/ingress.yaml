@@ -10,7 +10,7 @@ metadata:
     gethomepage.dev/description: "Travel tracker"
     gethomepage.dev/group: "Productivity"
     gethomepage.dev/icon: "adventurelog"
-    gethomepage.dev/href: "https://adventurelog.<tailnet>.ts.net"
+    gethomepage.dev/href: "https://adventurelog.${TAILNET_DOMAIN}"
     gethomepage.dev/pod-selector: "app=adventurelog-frontend"
 spec:
   ingressClassName: tailscale

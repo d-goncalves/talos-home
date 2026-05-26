@@ -224,6 +224,13 @@ This fetches the talosconfig from 1Password, generates kubeconfig, bootstraps th
 
 ### Step 3 — Bootstrap Flux
 
+`recover.sh` creates two manual secrets that are never stored in git:
+
+| Secret | Namespace | Purpose |
+|---|---|---|
+| `onepassword-service-account-token` | `external-secrets` | ESO → 1Password auth |
+| `cluster-vars` | `flux-system` | Flux variable substitution (`TAILNET_DOMAIN`) |
+
 ```bash
 kubectl apply -k ~/talos/kubernetes/flux
 ```

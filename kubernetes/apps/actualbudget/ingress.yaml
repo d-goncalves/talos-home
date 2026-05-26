@@ -10,7 +10,7 @@ metadata:
     gethomepage.dev/description: "Personal finance"
     gethomepage.dev/group: "Finance"
     gethomepage.dev/icon: "actual-budget"
-    gethomepage.dev/href: "https://actualbudget.<tailnet>.ts.net"
+    gethomepage.dev/href: "https://actualbudget.${TAILNET_DOMAIN}"
     gethomepage.dev/pod-selector: "app=actualbudget"
 spec:
   ingressClassName: tailscale

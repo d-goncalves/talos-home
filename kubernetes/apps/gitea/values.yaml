@@ -14,8 +14,8 @@ gitea:
     queue:
       TYPE: level
     server:
-      DOMAIN: gitea.<tailnet>.ts.net
-      ROOT_URL: https://gitea.<tailnet>.ts.net
+      DOMAIN: gitea.${TAILNET_DOMAIN}
+      ROOT_URL: https://gitea.${TAILNET_DOMAIN}
     session:
       PROVIDER: memory
 

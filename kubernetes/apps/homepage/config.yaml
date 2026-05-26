@@ -34,97 +34,97 @@ data:
   services.yaml: |
     - Media:
         - Jellyfin:
-            href: https://jellyfin.<tailnet>.ts.net
+            href: https://jellyfin.${TAILNET_DOMAIN}
             description: Media server
             icon: jellyfin.png
         - Jellyseerr:
-            href: https://jellyseerr.<tailnet>.ts.net
+            href: https://jellyseerr.${TAILNET_DOMAIN}
             description: Request movies & TV
             icon: jellyseerr.png
         - Immich:
-            href: https://immich.<tailnet>.ts.net
+            href: https://immich.${TAILNET_DOMAIN}
             description: Photo library
             icon: immich.png
         - Audiobookshelf:
-            href: https://audiobookshelf.<tailnet>.ts.net
+            href: https://audiobookshelf.${TAILNET_DOMAIN}
             description: Audiobooks & podcasts
             icon: audiobookshelf.png
 
     - Finance:
         - Actual Budget:
-            href: https://actualbudget.<tailnet>.ts.net
+            href: https://actualbudget.${TAILNET_DOMAIN}
             description: Personal finance
             icon: actual-budget.png
         - Wallos:
-            href: https://wallos.<tailnet>.ts.net
+            href: https://wallos.${TAILNET_DOMAIN}
             description: Subscription tracker
             icon: wallos.png
 
     - Tools:
         - Homebox:
-            href: https://homebox.<tailnet>.ts.net
+            href: https://homebox.${TAILNET_DOMAIN}
             description: Home inventory
             icon: homebox.png
         - AdventureLog:
-            href: https://adventurelog.<tailnet>.ts.net
+            href: https://adventurelog.${TAILNET_DOMAIN}
             description: Travel tracker
             icon: mdi-map-marker-path
         - IT Tools:
-            href: https://it-tools.<tailnet>.ts.net
+            href: https://it-tools.${TAILNET_DOMAIN}
             description: Developer utilities
             icon: it-tools.png
         - BentoPDF:
-            href: https://bentopdf.<tailnet>.ts.net
+            href: https://bentopdf.${TAILNET_DOMAIN}
             description: PDF toolkit
             icon: mdi-file-pdf-box
 
     - Infrastructure:
         - Gitea:
-            href: https://gitea.<tailnet>.ts.net
+            href: https://gitea.${TAILNET_DOMAIN}
             description: Git repositories
             icon: gitea.png
         - Outline:
-            href: https://outline.<tailnet>.ts.net
+            href: https://outline.${TAILNET_DOMAIN}
             description: Wiki & docs
             icon: outline.png
         - Grafana:
-            href: https://grafana.<tailnet>.ts.net
+            href: https://grafana.${TAILNET_DOMAIN}
             description: Metrics & logs
             icon: grafana.png
         - Prowlarr:
-            href: https://prowlarr.<tailnet>.ts.net
+            href: https://prowlarr.${TAILNET_DOMAIN}
             description: Indexer manager
             icon: prowlarr.png
         - qBittorrent:
-            href: https://qbittorrent.<tailnet>.ts.net
+            href: https://qbittorrent.${TAILNET_DOMAIN}
             description: Torrent client
             icon: qbittorrent.png
         - Sonarr:
-            href: https://sonarr.<tailnet>.ts.net
+            href: https://sonarr.${TAILNET_DOMAIN}
             description: TV shows
             icon: sonarr.png
         - Radarr:
-            href: https://radarr.<tailnet>.ts.net
+            href: https://radarr.${TAILNET_DOMAIN}
             description: Movies
             icon: radarr.png
         - Bazarr:
-            href: https://bazarr.<tailnet>.ts.net
+            href: https://bazarr.${TAILNET_DOMAIN}
             description: Subtitles
             icon: bazarr.png
         - WatchYourLAN:
-            href: https://watchyourlan.<tailnet>.ts.net
+            href: https://watchyourlan.${TAILNET_DOMAIN}
             description: Network monitor
             icon: watchyourlan.png
         - LibreSpeed:
-            href: https://librespeed.<tailnet>.ts.net
+            href: https://librespeed.${TAILNET_DOMAIN}
             description: Speed test
             icon: librespeed.png
         - Uptime Kuma:
-            href: https://uptime-kuma.<tailnet>.ts.net
+            href: https://uptime-kuma.${TAILNET_DOMAIN}
             description: Uptime monitoring
             icon: uptime-kuma.png
         - Ntfy:
-            href: https://ntfy.<tailnet>.ts.net
+            href: https://ntfy.${TAILNET_DOMAIN}
             description: Push notifications
             icon: ntfy.png
 

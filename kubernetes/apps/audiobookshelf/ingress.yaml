@@ -10,7 +10,7 @@ metadata:
     gethomepage.dev/description: "Audiobooks & podcasts"
     gethomepage.dev/group: "Media"
     gethomepage.dev/icon: "audiobookshelf"
-    gethomepage.dev/href: "https://audiobookshelf.<tailnet>.ts.net"
+    gethomepage.dev/href: "https://audiobookshelf.${TAILNET_DOMAIN}"
     gethomepage.dev/pod-selector: "app=audiobookshelf"
 spec:
   ingressClassName: tailscale

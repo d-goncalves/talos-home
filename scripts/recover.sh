@@ -105,6 +105,18 @@ else
   fi
 fi
 
+# ── Bootstrap cluster-vars (Flux variable substitution) ───────────────────────
+info "Bootstrapping cluster-vars secret..."
+if kubectl get secret cluster-vars -n flux-system &>/dev/null; then
+  warn "cluster-vars already exists, skipping"
+else
+  kubectl create namespace flux-system --dry-run=client -o yaml | kubectl apply -f -
+  kubectl create secret generic cluster-vars \
+    --from-literal=TAILNET_DOMAIN="${GITEA_HOST#gitea.}" \
+    --namespace flux-system
+  success "cluster-vars secret created (TAILNET_DOMAIN=${GITEA_HOST#gitea.})"
+fi
+
 # ── Clone repo ────────────────────────────────────────────────────────────────
 if [[ -d "$REPO_DIR" ]]; then
   warn "Repo already exists at $REPO_DIR, skipping clone"

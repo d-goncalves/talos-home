@@ -18,7 +18,7 @@ metadata:
   namespace: ntfy
 data:
   server.yml: |
-    base-url: https://ntfy.<tailnet>.ts.net
+    base-url: https://ntfy.${TAILNET_DOMAIN}
     cache-file: /var/cache/ntfy/cache.db
     auth-file: /var/lib/ntfy/auth.db
     auth-default-access: deny-all

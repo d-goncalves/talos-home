@@ -18,7 +18,7 @@ spec:
           image: ghcr.io/seanmorley15/adventurelog-frontend:latest
           env:
             - name: ORIGIN
-              value: https://adventurelog.<tailnet>.ts.net
+              value: https://adventurelog.${TAILNET_DOMAIN}
             - name: PUBLIC_SERVER_URL
               value: http://adventurelog-backend:8000
 ---

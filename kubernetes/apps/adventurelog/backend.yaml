@@ -28,9 +28,9 @@ spec:
             - name: SECRET_KEY
               value: REDACTED_SECRET_KEY
             - name: PUBLIC_URL
-              value: https://adventurelog.<tailnet>.ts.net
+              value: https://adventurelog.${TAILNET_DOMAIN}
             - name: FRONTEND_URL
-              value: https://adventurelog.<tailnet>.ts.net
+              value: https://adventurelog.${TAILNET_DOMAIN}
             - name: DJANGO_ADMIN_USERNAME
               value: admin
             - name: DJANGO_ADMIN_PASSWORD

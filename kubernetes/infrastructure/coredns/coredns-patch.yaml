@@ -15,7 +15,7 @@ data:
             class error
         }
         prometheus :9153
-        rewrite name gitea-ssh.<tailnet>.ts.net gitea-ssh-tailscale.gitea.svc.cluster.local
+        rewrite name gitea-ssh.${TAILNET_DOMAIN} gitea-ssh-tailscale.gitea.svc.cluster.local
         kubernetes cluster.local in-addr.arpa ip6.arpa {
             pods insecure
             fallthrough in-addr.arpa ip6.arpa

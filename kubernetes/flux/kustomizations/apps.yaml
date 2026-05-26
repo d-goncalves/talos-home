@@ -13,3 +13,7 @@ spec:
   dependsOn:
     - name: infrastructure
     - name: external-secrets-store
+  postBuild:
+    substituteFrom:
+      - kind: Secret
+        name: cluster-vars

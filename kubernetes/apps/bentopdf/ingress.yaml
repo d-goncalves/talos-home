@@ -10,7 +10,7 @@ metadata:
     gethomepage.dev/description: "PDF toolkit"
     gethomepage.dev/group: "Tools"
     gethomepage.dev/icon: "mdi-file-pdf-box"
-    gethomepage.dev/href: "https://bentopdf.<tailnet>.ts.net"
+    gethomepage.dev/href: "https://bentopdf.${TAILNET_DOMAIN}"
     gethomepage.dev/pod-selector: "app=bentopdf"
 spec:
   ingressClassName: tailscale
