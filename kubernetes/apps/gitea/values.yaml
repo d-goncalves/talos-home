@@ -1,0 +1,51 @@
+gitea:
+  admin:
+    email: REDACTED_EMAIL
+    username: admin
+    # Password is managed via 1Password ("Gitea" in Server Infrastructure vault)
+    # Set on first run only — subsequent restarts will not overwrite it
+    passwordMode: initialOnlyNoReset
+  config:
+    cache:
+      ADAPTER: memory
+    database:
+      DB_TYPE: sqlite3
+      PATH: /data/gitea/gitea.db
+    queue:
+      TYPE: level
+    server:
+      DOMAIN: gitea.<tailnet>.ts.net
+      ROOT_URL: https://gitea.<tailnet>.ts.net
+    session:
+      PROVIDER: memory
+
+persistence:
+  enabled: true
+  existingClaim: gitea-shared-storage-nfs
+  size: 10Gi
+  storageClass: local-path
+
+postgresql:
+  enabled: false
+postgresql-ha:
+  enabled: false
+redis:
+  enabled: false
+redis-cluster:
+  enabled: false
+valkey:
+  enabled: false
+valkey-cluster:
+  enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+service:
+  http:
+    port: 3000
+    type: ClusterIP
