@@ -4,3 +4,4 @@ resources:
   - tailscale-operator/
   - nfs-csi/
   - coredns/
+  - external-secrets/
