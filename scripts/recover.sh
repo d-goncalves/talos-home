@@ -2,10 +2,17 @@
 set -euo pipefail
 
 TALOS_ENDPOINT="NODE_IP_PLACEHOLDER"
-GITEA_HOST="gitea.<tailnet>.ts.net"
-GITEA_REPO="https://${GITEA_HOST}/admin/talos-home.git"
 GITHUB_REPO="https://github.com/d-goncalves/talos-home.git"
 REPO_DIR="$HOME/talos"
+
+# ── Tailnet domain ─────────────────────────────────────────────────────────────
+# Set TAILNET_DOMAIN in the environment, or the script will prompt.
+# Example: TAILNET_DOMAIN=my-tailnet.ts.net bash <(curl -s <url>/recover.sh)
+if [[ -z "${TAILNET_DOMAIN:-}" ]]; then
+  read -rp "Enter your Tailscale tailnet domain (e.g. my-tailnet.ts.net): " TAILNET_DOMAIN
+fi
+GITEA_HOST="gitea.${TAILNET_DOMAIN}"
+GITEA_REPO="https://${GITEA_HOST}/admin/talos-home.git"
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info()    { echo -e "${GREEN}==>${NC} $1"; }
