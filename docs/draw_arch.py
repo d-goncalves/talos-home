@@ -61,7 +61,7 @@ graph_attr = {
     "bgcolor": "white",
     "fontcolor": "#24292f",
     "pad": "2.0",
-    "splines": "ortho",
+    "splines": "curved",
     "nodesep": "1.4",
     "ranksep": "2.0",
     "size": "32,20",
@@ -95,7 +95,7 @@ with Diagram(
     # ── External ──────────────────────────────────────────────────────────────
     with Cluster("External", graph_attr=cluster_attr):
         op = icon("onepassword", "1Password")
-        gh = icon("github",     "GitHub\nmirror")
+        gh = icon("github",      "GitHub\nmirror")
 
     # ── Talos cluster ─────────────────────────────────────────────────────────
     with Cluster("Talos Linux · NODE_IP_PLACEHOLDER (Proxmox VM)", graph_attr=outer_cluster):
@@ -105,9 +105,11 @@ with Diagram(
             flux  = icon("flux",   "Flux CD")
 
         with Cluster("Infrastructure", graph_attr=cluster_attr):
-            ts_op   = icon("tailscale", "Tailscale\nOperator")
-            eso     = icon("eso", "Ext. Secrets\nOperator")
             nfs_csi = Storage("NFS CSI")
+            eso     = icon("eso", "Ext. Secrets\nOperator")
+
+        # Tailscale Operator lives inside the cluster but watches all app namespaces
+        ts_op = icon("tailscale", "Tailscale\nOperator")
 
         # App clusters — each group becomes a single icon-grid tile
         with Cluster("Media", graph_attr=cluster_attr):
@@ -132,11 +134,13 @@ with Diagram(
             nfs_pvc   = PV("NFS PVCs\n(survives wipes)")
             local_pvc = PV("local-path\n(node only)")
 
-        tailnet = Ingress("*.<tailnet>.ts.net")
-
     # ── NAS ───────────────────────────────────────────────────────────────────
     with Cluster("Unifi NAS · NAS_IP_PLACEHOLDER", graph_attr=cluster_attr):
         nas = Storage("NFS Server")
+
+    # ── Tailscale Network (outside the cluster — your devices connect here) ───
+    tailnet = icon("tailscale", "Tailscale Network\n*.<tailnet>.ts.net")
+
 
     # ── Edges ─────────────────────────────────────────────────────────────────
     # GitOps
@@ -158,6 +162,5 @@ with Diagram(
     # local-path
     infra_apps  >> Edge(color="#cf222e", style="dashed") >> local_pvc
 
-    # Networking
-    ts_op                              >> Edge(color="#0969da")                       >> tailnet
-    [media, personal, infra_apps]      >> Edge(label="Tailscale ingress", color="#0969da") >> tailnet
+    # Networking — Operator exposes all apps onto the tailnet
+    ts_op >> Edge(label="exposes apps", color="#0969da") >> tailnet
