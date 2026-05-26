@@ -4,6 +4,17 @@ set -euo pipefail
 GITHUB_REPO="https://github.com/d-goncalves/talos-home.git"
 REPO_DIR="$HOME/talos"
 
+# ── Git identity & signing ─────────────────────────────────────────────────────
+info_pre() { echo "==> $1"; }  # info() defined later after colors are set up
+info_pre "Configuring git identity and commit signing..."
+git config --global user.name  "Diogo Gonçalves"
+git config --global user.email "124159934+d-goncalves@users.noreply.github.com"
+git config --global commit.gpgsign    true
+git config --global tag.gpgsign       true
+git config --global gpg.format        ssh
+git config --global user.signingkey   "REDACTED_SIGNING_KEY"
+git config --global gpg.ssh.program   "/Applications/1Password.app/Contents/MacOS/op-ssh-sign"
+
 # ── Node IP ────────────────────────────────────────────────────────────────────
 # Set NODE_IP in the environment, or the script will prompt.
 if [[ -z "${NODE_IP:-}" ]]; then
