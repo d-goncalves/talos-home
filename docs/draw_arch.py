@@ -162,5 +162,6 @@ with Diagram(
     # local-path
     infra_apps  >> Edge(color="#cf222e", style="dashed") >> local_pvc
 
-    # Networking — Operator exposes all apps onto the tailnet
-    ts_op >> Edge(label="exposes apps", color="#0969da") >> tailnet
+    # Networking — apps are exposed via the Operator onto the tailnet
+    [media, personal, infra_apps] >> Edge(color="#0969da", style="dashed") >> ts_op
+    ts_op >> Edge(label="Tailscale", color="#0969da") >> tailnet
