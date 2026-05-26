@@ -16,7 +16,6 @@ from diagrams.k8s.storage import PV
 from diagrams.k8s.network import Ingress
 from diagrams.onprem.vcs import Github
 from diagrams.generic.storage import Storage
-from diagrams.onprem.security import Vault
 
 ICONS = Path("/tmp/diagram_icons")
 
@@ -96,7 +95,7 @@ with Diagram(
     # ── External ──────────────────────────────────────────────────────────────
     with Cluster("External", graph_attr=cluster_attr):
         op = icon("onepassword", "1Password")
-        gh = Github("GitHub\nmirror")
+        gh = icon("github",     "GitHub\nmirror")
 
     # ── Talos cluster ─────────────────────────────────────────────────────────
     with Cluster("Talos Linux · NODE_IP_PLACEHOLDER (Proxmox VM)", graph_attr=outer_cluster):
@@ -107,7 +106,7 @@ with Diagram(
 
         with Cluster("Infrastructure", graph_attr=cluster_attr):
             ts_op   = icon("tailscale", "Tailscale\nOperator")
-            eso     = Vault("ESO")
+            eso     = icon("eso", "Ext. Secrets\nOperator")
             nfs_csi = Storage("NFS CSI")
 
         # App clusters — each group becomes a single icon-grid tile
