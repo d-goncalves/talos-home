@@ -44,6 +44,13 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 
 ### Cluster overview
 
+![Architecture diagram](docs/architecture.png)
+
+> **Edge colours:** 🔵 blue = GitOps / networking · 🟢 green = Flux reconcile · 🟣 purple = secrets · 🟡 yellow = NFS storage · 🔴 red = local-path storage
+
+<details>
+<summary>Mermaid source (text version)</summary>
+
 ```mermaid
 graph TB
     subgraph EXTERNAL["☁️ External"]
@@ -119,6 +126,8 @@ graph TB
     JF & SN & RD & PR & BZ & GL & IM & AB & ABS & WL & OL & GITEA -->|"NFS PVC"| NFS_PVC
     GR & UK -->|"local-path PVC"| LOCAL_PVC
 ```
+
+</details>
 
 ### Flux reconciliation order
 
