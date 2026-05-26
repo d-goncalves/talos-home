@@ -84,7 +84,7 @@ If Gitea itself is unreachable (total cluster loss), fetch from GitHub instead:
 curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh | bash
 ```
 
-This fetches the talosconfig from 1Password, generates kubeconfig, and clones the repo to `~/talos`.
+This fetches the talosconfig from 1Password, generates kubeconfig, bootstraps the External Secrets Operator token, and clones the repo to `~/talos`.
 
 ### Step 3 — Bootstrap Flux
 
@@ -113,4 +113,17 @@ After Flux reconciles, the following need manual reconfiguration if the node was
 - **Uptime Kuma** — monitors need to be re-added in the UI
 - **Ntfy** — admin user is recreated automatically by init container ✅
 - **Servarr apps** — Sonarr/Radarr/Prowlarr/Bazarr config is on NFS, should restore automatically ✅
+
+### Secrets management
+
+All app secrets are managed by [External Secrets Operator](https://external-secrets.io) and pulled from 1Password automatically. The only manual bootstrap step is the ESO service account token (handled by `recover.sh`).
+
+The token is stored in 1Password under **"1Password Service Account - talos-home"** in the Server Infrastructure vault. If you need to rotate it, generate a new token at [1password.com](https://1password.com) → Integrations → Service Accounts, then re-run:
+
+```bash
+kubectl create secret generic onepassword-service-account-token \
+  --from-literal=token=<new-token> \
+  --namespace external-secrets \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
 
