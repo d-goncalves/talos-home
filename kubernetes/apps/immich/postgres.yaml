@@ -51,7 +51,10 @@ spec:
             - name: POSTGRES_USER
               value: immich
             - name: POSTGRES_PASSWORD
-              value: immich
+              valueFrom:
+                secretKeyRef:
+                  name: immich-secrets
+                  key: POSTGRES_PASSWORD
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           ports:
