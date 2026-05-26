@@ -21,10 +21,10 @@ spec:
             - |
               mkdir -p /config
               if [ ! -f /config/config.xml ]; then
-                cat > /config/config.xml <<'XML'
+                cat > /config/config.xml <<XML
               <Config>
                 <InstanceName>Radarr</InstanceName>
-                <ApiKey>REDACTED_RADARR_API_KEY</ApiKey>
+                <ApiKey>${RADARR_API_KEY}</ApiKey>
                 <AuthenticationMethod>Forms</AuthenticationMethod>
                 <AuthenticationRequired>Enabled</AuthenticationRequired>
                 <Branch>master</Branch>
@@ -34,6 +34,12 @@ spec:
               </Config>
               XML
               fi
+          env:
+            - name: RADARR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: servarr-secrets
+                  key: RADARR_API_KEY
           volumeMounts:
             - name: config
               mountPath: /config

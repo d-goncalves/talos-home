@@ -21,10 +21,10 @@ spec:
             - |
               mkdir -p /config
               if [ ! -f /config/config.xml ]; then
-                cat > /config/config.xml <<'XML'
+                cat > /config/config.xml <<XML
               <Config>
                 <InstanceName>Prowlarr</InstanceName>
-                <ApiKey>REDACTED_PROWLARR_API_KEY</ApiKey>
+                <ApiKey>${PROWLARR_API_KEY}</ApiKey>
                 <AuthenticationMethod>Forms</AuthenticationMethod>
                 <AuthenticationRequired>Enabled</AuthenticationRequired>
                 <Branch>master</Branch>
@@ -34,6 +34,12 @@ spec:
               </Config>
               XML
               fi
+          env:
+            - name: PROWLARR_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: servarr-secrets
+                  key: PROWLARR_API_KEY
           volumeMounts:
             - name: config
               mountPath: /config
