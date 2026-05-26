@@ -24,14 +24,23 @@ data:
     auth-default-access: deny-all
     behind-proxy: true
 ---
-apiVersion: v1
-kind: Secret
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
 metadata:
   name: ntfy-admin
   namespace: ntfy
-type: Opaque
-stringData:
-  password: "REDACTED"
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword
+    kind: ClusterSecretStore
+  target:
+    name: ntfy-admin
+  data:
+    - secretKey: password
+      remoteRef:
+        key: ntfy
+        property: password
 ---
 apiVersion: apps/v1
 kind: Deployment
