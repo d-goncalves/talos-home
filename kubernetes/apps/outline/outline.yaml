@@ -37,11 +37,20 @@ spec:
             - name: NODE_ENV
               value: production
             - name: SECRET_KEY
-              value: REDACTED_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: outline-secrets
+                  key: SECRET_KEY
             - name: UTILS_SECRET
-              value: REDACTED_UTILS_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: outline-secrets
+                  key: UTILS_SECRET
             - name: DATABASE_URL
-              value: postgres://outline:REDACTED_PG_PASSWORD@outline-postgres:5432/outline
+              valueFrom:
+                secretKeyRef:
+                  name: outline-secrets
+                  key: DATABASE_URL
             - name: PGSSLMODE
               value: disable
             - name: REDIS_URL
@@ -59,9 +68,15 @@ spec:
             - name: FILE_STORAGE_UPLOAD_MAX_SIZE
               value: "26214400"
             - name: OIDC_CLIENT_ID
-              value: 6f2912bd-bd44-4c5f-ad8e-338ced1dff5b
+              valueFrom:
+                secretKeyRef:
+                  name: outline-secrets
+                  key: OIDC_CLIENT_ID
             - name: OIDC_CLIENT_SECRET
-              value: REDACTED_OIDC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: outline-secrets
+                  key: OIDC_CLIENT_SECRET
             - name: OIDC_AUTH_URI
               value: https://gitea.${TAILNET_DOMAIN}/login/oauth/authorize
             - name: OIDC_TOKEN_URI
