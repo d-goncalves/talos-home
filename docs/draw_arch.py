@@ -7,6 +7,8 @@ Output:   docs/architecture.png
 """
 
 import math
+import re
+import subprocess
 from pathlib import Path
 from PIL import Image
 
@@ -83,10 +85,13 @@ node_attr = {"fontsize": "13", "fontcolor": "#24292f"}
 
 # ── Diagram ───────────────────────────────────────────────────────────────────
 
+DOT_TMP  = "/tmp/arch_tmp"
+PNG_OUT  = "/Users/diogo/talos/docs/architecture"
+
 with Diagram(
     "",
-    filename="/Users/diogo/talos/docs/architecture",
-    outformat="png",
+    filename=DOT_TMP,
+    outformat="dot",
     show=False,
     direction="LR",
     graph_attr=graph_attr,
@@ -166,5 +171,37 @@ with Diagram(
     [media, personal, infra_apps] >> Edge(color="#0969da", style="dashed") >> ts_op
     ts_op >> Edge(label="Tailscale", color="#0969da") >> tailnet
 
-    # Ordering hint: NAS above Tailscale Network in the right column
-    nas >> Edge(style="invis") >> tailnet
+    pass  # rank=same injected in post-processing below
+
+# ── Post-process DOT: force NAS and Tailscale Network into the same column ────
+dot = Path(DOT_TMP + ".dot").read_text()
+
+def find_node_id(dot_text: str, label: str) -> str:
+    """Walk backwards from a label string to find the enclosing node ID."""
+    lines = dot_text.splitlines()
+    for i, line in enumerate(lines):
+        if label in line:
+            for j in range(i, max(i - 10, 0), -1):
+                # Node IDs are hex strings, quoted or unquoted, followed by \t[
+                m = re.match(r'\s*"?([0-9a-f]{10,})"?\s*\[', lines[j])
+                if m:
+                    return m.group(1)
+    raise ValueError(f"Node ID not found for label: {label!r}")
+
+nas_id     = find_node_id(dot, 'label="NFS Server"')
+tailnet_id = find_node_id(dot, 'label="Tailscale Network')
+
+# Inject rank=same with NAS first (graphviz places first-listed node higher)
+rank_same = f'\n\t{{ rank=same; "{nas_id}"; "{tailnet_id}" }}\n'
+dot = re.sub(r'\}\s*$', rank_same + "}\n", dot.rstrip())
+
+# Render to PNG
+result = subprocess.run(
+    ["dot", "-Tpng", f"-o{PNG_OUT}.png"],
+    input=dot.encode(),
+    capture_output=True,
+)
+if result.returncode != 0:
+    print(result.stderr.decode())
+else:
+    print(f"Rendered to {PNG_OUT}.png")
