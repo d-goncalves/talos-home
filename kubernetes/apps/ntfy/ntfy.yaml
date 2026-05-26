@@ -36,10 +36,9 @@ spec:
     kind: ClusterSecretStore
   target:
     name: ntfy-admin
-  data:
-    - secretKey: password
-      remoteRef:
-        key: "op://<vault-id>/ntfy/password"
+  dataFrom:
+    - extract:
+        key: <item-id>  # ntfy item in Server Infrastructure vault
 ---
 apiVersion: apps/v1
 kind: Deployment
