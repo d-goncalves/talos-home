@@ -115,6 +115,9 @@ graph TB
     GH -->|"push mirror"| GITEA
     NFS_PVC <-->|"NFS mount"| NFS_SRV
     APPS -->|"Ingress"| TS_PROXY
+
+    JF & SN & RD & PR & BZ & GL & IM & AB & ABS & WL & OL & GITEA -->|"NFS PVC"| NFS_PVC
+    GR & UK -->|"local-path PVC"| LOCAL_PVC
 ```
 
 ### Flux reconciliation order
