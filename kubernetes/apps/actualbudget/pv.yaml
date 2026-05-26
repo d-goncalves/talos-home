@@ -10,7 +10,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   nfs:
     server: ${NAS_IP}
-    path: /volume/NAS_DATA_PATH_PLACEHOLDER/actual
+    path: ${NAS_DATA_PATH}/actual
   mountOptions:
     - nfsvers=3
     - nolock

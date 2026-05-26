@@ -17,7 +17,7 @@ spec:
     - hard
   nfs:
     server: ${NAS_IP}
-    path: /volume/NAS_DATA_PATH_PLACEHOLDER/servarr
+    path: ${NAS_DATA_PATH}/servarr
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
