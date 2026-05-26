@@ -180,11 +180,16 @@ sequenceDiagram
 
 ```
 kubernetes/
-  apps/          # user-facing applications
-  infrastructure/  # cluster-level components (Tailscale operator, storage classes)
-  flux/          # FluxCD bootstrap
-talos/           # Talos machine config patches
-scripts/         # tooling
+  apps/            # user-facing applications
+  infrastructure/  # cluster-level components (Tailscale operator, NFS CSI, ESO)
+  flux/            # FluxCD bootstrap (GitRepository + Kustomizations)
+talos/
+  patches/         # Talos machine config patches (network.yaml tracked; tailscale*.yaml gitignored)
+scripts/
+  recover.sh       # disaster recovery — bootstraps secrets, tooling, and repo from scratch
+docs/
+  draw_arch.py     # generates architecture.png (requires pip install -r docs/requirements.txt)
+  architecture.png # rendered diagram
 ```
 
 ## Recovery
@@ -208,37 +213,52 @@ talosctl apply-config --insecure --nodes <node-ip> --file talos/controlplane.yam
 
 ### Step 2 — Restore tooling and repo
 
-Pass your tailnet domain as an env var so the script can locate Gitea and create the `cluster-vars` secret automatically:
+Pass your environment variables so the script can locate Gitea, populate the `cluster-vars` secret, and generate the Tailscale patch files automatically:
 
 ```bash
 # If Gitea is reachable (cluster partially up):
+NODE_IP=<node-ip> \
+NAS_IP=<nas-ip> \
+LAN_SUBNET=<lan-subnet> \
+NAS_DATA_PATH=<nas-data-path> \
 TAILNET_DOMAIN=<tailnet>.ts.net \
   bash <(curl -s https://gitea.<tailnet>.ts.net/admin/talos-home/raw/branch/master/scripts/recover.sh)
 
 # If the cluster is completely gone — use the GitHub mirror:
+NODE_IP=<node-ip> \
+NAS_IP=<nas-ip> \
+LAN_SUBNET=<lan-subnet> \
+NAS_DATA_PATH=<nas-data-path> \
 TAILNET_DOMAIN=<tailnet>.ts.net \
   bash <(curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh)
 ```
 
-This fetches the talosconfig from 1Password, generates kubeconfig, bootstraps both ESO and Flux secrets, and clones the repo to `~/talos`.
+Any variable not passed as an env var will be prompted interactively.
+
+This script:
+- Installs `talosctl`, `kubectl`, `flux` if missing
+- Fetches `talosconfig` from 1Password and configures the endpoint
+- Fetches the Tailscale auth key from 1Password and generates the gitignored `talos/patches/tailscale-ext.yaml` and `talos/patches/tailscale.yaml`
+- Bootstraps both ESO and Flux secrets (see below)
+- Clones the repo to `~/talos`
 
 `recover.sh` creates two secrets that are never stored in git:
 
-| Secret | Namespace | Purpose |
+| Secret | Namespace | Keys |
 |---|---|---|
-| `onepassword-service-account-token` | `external-secrets` | ESO → 1Password auth |
-| `cluster-vars` | `flux-system` | Flux variable substitution (`TAILNET_DOMAIN`) |
+| `onepassword-service-account-token` | `external-secrets` | `token` — ESO → 1Password auth |
+| `cluster-vars` | `flux-system` | `TAILNET_DOMAIN`, `NODE_IP`, `NAS_IP`, `LAN_SUBNET`, `NAS_DATA_PATH` |
 
 ### Step 3 — Bootstrap Flux
 
-`gotk-sync.yaml` uses `<tailnet>.ts.net` as a placeholder — substitute your real domain before applying:
+Apply the Flux sync manifests and kustomizations:
 
 ```bash
-TAILNET_DOMAIN=<tailnet>.ts.net
-sed "s/<tailnet>\.ts\.net/${TAILNET_DOMAIN}/g" ~/talos/kubernetes/flux/flux-system/gotk-sync.yaml \
-  | kubectl apply -f -
+kubectl apply -f ~/talos/kubernetes/flux/flux-system/gotk-sync.yaml
 kubectl apply -k ~/talos/kubernetes/flux/kustomizations
 ```
+
+> **Forking?** `gotk-sync.yaml` contains a hardcoded Gitea SSH URL — it cannot use Flux variable substitution because the `GitRepository` source is what Flux reads first. Replace the `url:` field with your own Gitea SSH address before applying.
 
 Flux's `GitRepository` source points to `ssh://git@gitea-ssh.<tailnet>.ts.net` (the Tailscale address). CoreDNS has a rewrite rule that resolves this to the `gitea-ssh-tailscale` LoadBalancer service inside the cluster. On a fresh cluster the Tailscale Operator and Gitea must be running before Flux can sync — Flux will retry automatically once they come up.
 
@@ -264,9 +284,21 @@ After Flux reconciles, the following need manual reconfiguration if the node was
 
 ### Secrets management
 
-All app secrets are managed by [External Secrets Operator](https://external-secrets.io) and pulled from 1Password automatically. The only manual bootstrap step is the ESO service account token (handled by `recover.sh`).
+All app secrets are managed by [External Secrets Operator](https://external-secrets.io) and pulled from 1Password automatically. No secrets are stored in git.
 
-The token is stored in 1Password under **"1Password Service Account - talos-home"** in the Server Infrastructure vault. If you need to rotate it, generate a new token at [1password.com](https://1password.com) → Integrations → Service Accounts, then re-run:
+The following items must exist in the **Server Infrastructure** 1Password vault:
+
+| 1Password item | Used by |
+|---|---|
+| `1Password Service Account - talos-home` | ESO → 1Password auth (field: `token`) |
+| `Tailscale Auth Key - talos-home` | Talos Tailscale extension (field: `authkey`) |
+| `servarr` | WireGuard key, qBittorrent password, Sonarr/Radarr/Prowlarr API keys |
+| `AdventureLog - talos-home` | Django admin password, email, secret key, postgres password |
+| `Immich - talos-home` | Postgres password |
+| `Outline - talos-home` | Secret key, utils secret, postgres password, OIDC client credentials |
+| `Grafana - talos-home` | Grafana admin password |
+
+To rotate the ESO service account token, generate a new one at [1password.com](https://1password.com) → Integrations → Service Accounts, update the 1Password item, then re-run:
 
 ```bash
 kubectl create secret generic onepassword-service-account-token \
