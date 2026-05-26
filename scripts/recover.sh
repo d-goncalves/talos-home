@@ -85,6 +85,26 @@ info "Verifying cluster access..."
 kubectl get nodes
 echo ""
 
+# ── Bootstrap External Secrets (1Password service account token) ──────────────
+info "Bootstrapping External Secrets Operator token..."
+if kubectl get secret onepassword-service-account-token -n external-secrets &>/dev/null; then
+  warn "onepassword-service-account-token already exists, skipping"
+else
+  ESO_TOKEN=$(op item get "1Password Service Account - talos-home" --vault "Server Infrastructure" --fields token --reveal 2>/dev/null || true)
+  if [[ -z "$ESO_TOKEN" ]]; then
+    warn "Could not fetch ESO token from 1Password — create it manually:"
+    warn "  kubectl create namespace external-secrets"
+    warn "  kubectl create secret generic onepassword-service-account-token \\"
+    warn "    --from-literal=token=<token> -n external-secrets"
+  else
+    kubectl create namespace external-secrets --dry-run=client -o yaml | kubectl apply -f -
+    kubectl create secret generic onepassword-service-account-token \
+      --from-literal=token="$ESO_TOKEN" \
+      --namespace external-secrets
+    success "ESO token secret created"
+  fi
+fi
+
 # ── Clone repo ────────────────────────────────────────────────────────────────
 if [[ -d "$REPO_DIR" ]]; then
   warn "Repo already exists at $REPO_DIR, skipping clone"
