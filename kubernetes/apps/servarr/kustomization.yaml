@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - storage.yaml
+  - externalsecret.yaml
   - gluetun-qbittorrent.yaml
   - prowlarr.yaml
   - sonarr.yaml
