@@ -40,6 +40,130 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 | [Ntfy](https://ntfy.sh) | Push notifications |
 | Grafana + Loki + Prometheus | Metrics & logs |
 
+## Architecture
+
+### Cluster overview
+
+```mermaid
+graph TB
+    subgraph EXTERNAL["☁️ External"]
+        OP["1Password\n(cloud)"]
+        GH["GitHub\n(mirror)"]
+    end
+
+    subgraph NODE["🖥️ Talos Linux — NODE_IP_PLACEHOLDER (Proxmox VM)"]
+
+        subgraph GITOPS["GitOps Layer"]
+            GITEA["Gitea\n(source of truth)"]
+            FLUX["Flux CD"]
+            GITEA -->|"watches via SSH\ngitea-ssh.<tailnet>.ts.net"| FLUX
+        end
+
+        subgraph INFRA["Infrastructure Kustomization"]
+            TS_OP["Tailscale Operator"]
+            NFS_CSI["NFS CSI Driver"]
+            COREDNS["CoreDNS\n+ rewrite rule"]
+            ESO["External Secrets\nOperator"]
+        end
+
+        subgraph APPS["Apps Kustomization"]
+            direction LR
+            subgraph MEDIA["Media"]
+                JF["Jellyfin"]
+                JS["Jellyseerr"]
+            end
+            subgraph SERVARR_GRP["Servarr"]
+                SN["Sonarr"]
+                RD["Radarr"]
+                PR["Prowlarr"]
+                BZ["Bazarr"]
+                GL["Gluetun + qBittorrent"]
+            end
+            subgraph PERSONAL["Personal"]
+                IM["Immich"]
+                AB["Actual Budget"]
+                ABS["Audiobookshelf"]
+                WL["Wallos"]
+            end
+            subgraph INFRA_APPS["Infrastructure Apps"]
+                GR["Grafana + Loki + Prometheus"]
+                NT["ntfy"]
+                OL["Outline"]
+                UK["Uptime Kuma"]
+                HP["Homepage"]
+            end
+        end
+
+        subgraph NETWORK["Networking"]
+            TS_PROXY["Tailscale Proxies\n*.<tailnet>.ts.net"]
+            TS_OP --> TS_PROXY
+        end
+
+        subgraph STORAGE["Storage"]
+            NFS_PVC["NFS PVCs\n(app data — survives wipes)"]
+            LOCAL_PVC["local-path PVCs\n(metrics, monitors)"]
+            NFS_CSI --> NFS_PVC
+        end
+    end
+
+    subgraph NAS["🗄️ Unifi NAS — NAS_IP_PLACEHOLDER"]
+        NFS_SRV["NFS Server"]
+    end
+
+    FLUX -->|"reconciles"| INFRA
+    FLUX -->|"reconciles"| APPS
+    GH -->|"push mirror"| GITEA
+    NFS_PVC <-->|"NFS mount"| NFS_SRV
+    APPS -->|"Ingress"| TS_PROXY
+```
+
+### Flux reconciliation order
+
+```mermaid
+graph LR
+    FS["flux-system\n(GitRepository + self)"]
+    INF["infrastructure\n(Tailscale, NFS, CoreDNS, ESO Helm)"]
+    STORE["external-secrets-store\n(ClusterSecretStore)"]
+    APPS["apps\n(all user-facing apps)"]
+
+    FS -->|"deploys"| INF
+    INF -->|"dependsOn"| STORE
+    STORE -->|"dependsOn"| APPS
+
+    style FS fill:#4a4a6a,color:#fff
+    style INF fill:#2d5a8e,color:#fff
+    style STORE fill:#1a7a4a,color:#fff
+    style APPS fill:#7a3a1a,color:#fff
+```
+
+### Secret management
+
+```mermaid
+sequenceDiagram
+    participant OP as 1Password (cloud)
+    participant ESO as External Secrets Operator
+    participant CSS as ClusterSecretStore (onepasswordSDK)
+    participant ES as ExternalSecret
+    participant KS as Kubernetes Secret
+    participant APP as App Pod
+
+    note over ESO,CSS: Bootstrap (once, via recover.sh)<br/>kubectl create secret onepassword-service-account-token
+
+    ESO->>CSS: registers store using SA token
+    CSS->>OP: authenticates via service account token
+
+    note over ES,KS: Every refreshInterval (1h)
+
+    ESO->>ES: watches ExternalSecret resources
+    ES->>CSS: requests secret data
+    CSS->>OP: fetches item fields
+    OP-->>CSS: returns field values
+    CSS-->>ES: secret data
+    ESO->>KS: creates/updates Kubernetes Secret
+
+    APP->>KS: reads via secretKeyRef or envFrom
+```
+
 ## Repo structure
 
 ```
