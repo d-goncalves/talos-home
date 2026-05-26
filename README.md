@@ -208,31 +208,36 @@ talosctl apply-config --insecure --nodes NODE_IP_PLACEHOLDER --file talos/contro
 
 ### Step 2 — Restore tooling and repo
 
-On your Mac — the script auto-detects whether Gitea is up and falls back to the GitHub mirror if not:
+Pass your tailnet domain as an env var so the script can locate Gitea and create the `cluster-vars` secret automatically:
 
 ```bash
-curl -s https://gitea.<tailnet>.ts.net/admin/talos-home/raw/branch/master/scripts/recover.sh | bash
+# If Gitea is reachable (cluster partially up):
+TAILNET_DOMAIN=<tailnet>.ts.net \
+  bash <(curl -s https://gitea.<tailnet>.ts.net/admin/talos-home/raw/branch/master/scripts/recover.sh)
+
+# If the cluster is completely gone — use the GitHub mirror:
+TAILNET_DOMAIN=<tailnet>.ts.net \
+  bash <(curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh)
 ```
 
-If Gitea itself is unreachable (total cluster loss), fetch from GitHub instead:
+This fetches the talosconfig from 1Password, generates kubeconfig, bootstraps both ESO and Flux secrets, and clones the repo to `~/talos`.
 
-```bash
-curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh | bash
-```
-
-This fetches the talosconfig from 1Password, generates kubeconfig, bootstraps the External Secrets Operator token, and clones the repo to `~/talos`.
-
-### Step 3 — Bootstrap Flux
-
-`recover.sh` creates two manual secrets that are never stored in git:
+`recover.sh` creates two secrets that are never stored in git:
 
 | Secret | Namespace | Purpose |
 |---|---|---|
 | `onepassword-service-account-token` | `external-secrets` | ESO → 1Password auth |
 | `cluster-vars` | `flux-system` | Flux variable substitution (`TAILNET_DOMAIN`) |
 
+### Step 3 — Bootstrap Flux
+
+`gotk-sync.yaml` uses `<tailnet>.ts.net` as a placeholder — substitute your real domain before applying:
+
 ```bash
-kubectl apply -k ~/talos/kubernetes/flux
+TAILNET_DOMAIN=<tailnet>.ts.net
+sed "s/<tailnet>\.ts\.net/${TAILNET_DOMAIN}/g" ~/talos/kubernetes/flux/flux-system/gotk-sync.yaml \
+  | kubectl apply -f -
+kubectl apply -k ~/talos/kubernetes/flux/kustomizations
 ```
 
 Flux's `GitRepository` source points to `ssh://git@gitea-ssh.<tailnet>.ts.net` (the Tailscale address). CoreDNS has a rewrite rule that resolves this to the `gitea-ssh-tailscale` LoadBalancer service inside the cluster. On a fresh cluster the Tailscale Operator and Gitea must be running before Flux can sync — Flux will retry automatically once they come up.
