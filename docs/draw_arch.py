@@ -165,3 +165,6 @@ with Diagram(
     # Networking — apps are exposed via the Operator onto the tailnet
     [media, personal, infra_apps] >> Edge(color="#0969da", style="dashed") >> ts_op
     ts_op >> Edge(label="Tailscale", color="#0969da") >> tailnet
+
+    # Ordering hint: NAS above Tailscale Network in the right column
+    nas >> Edge(style="invis") >> tailnet
