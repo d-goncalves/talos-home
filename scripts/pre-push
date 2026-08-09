@@ -36,6 +36,12 @@ if [[ -n "$untracked" ]]; then
   fail "untracked files under kubernetes/ — commit them or add to .gitignore"
 fi
 
+# ── Persistent data must survive a rebuild ───────────────────────────────────
+if [[ -x ./provision ]]; then
+  ./provision apps storage >/dev/null 2>&1 || \
+    fail "storage audit failed — run './provision apps storage'"
+fi
+
 # ── The apps overlay must build ──────────────────────────────────────────────
 if command -v kubectl >/dev/null 2>&1; then
   kubectl kustomize kubernetes/apps >/dev/null || fail "kubernetes/apps does not build"

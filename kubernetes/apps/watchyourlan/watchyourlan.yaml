@@ -4,7 +4,7 @@ metadata:
   name: watchyourlan-data
   namespace: watchyourlan
 spec:
-  storageClassName: local-path
+  storageClassName: nfs-watchyourlan
   accessModes:
     - ReadWriteOnce
   resources:

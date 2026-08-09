@@ -273,3 +273,34 @@ def apps_diff() -> None:
             click.echo(click.style(line, fg="red"))
         else:
             click.echo(line)
+
+
+@apps.command("storage")
+def apps_storage() -> None:
+    """Audit storage so a rebuild loses nothing.
+
+    Fails if any PVC keeps real data on local-path, if an NFS-backed Deployment
+    could run two pods at once, or if an NFS StorageClass would provision onto
+    a random path that a rebuilt cluster cannot find again.
+    """
+    from .. import storage
+
+    require("kubectl")
+    rule("Storage audit")
+
+    apps_build = run(["kubectl", "kustomize", str(settings.apps_dir())],
+                     capture=True, echo=False)
+    infra = run(["kubectl", "kustomize",
+                 str(settings.repo_root() / "kubernetes" / "infrastructure")],
+                capture=True, echo=False)
+
+    problems = storage.audit(apps_build) + storage.storage_class_problems(infra)
+
+    if problems:
+        for p in problems:
+            click.echo(f"  {click.style('✗', fg='red')} {p}")
+        click.echo()
+        fail(f"{len(problems)} storage issue(s) — a rebuild would lose data")
+
+    success("all persistent data is on deterministic NFS paths")
+    success("every NFS-backed Deployment uses Recreate")

@@ -52,6 +52,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: storage audit
+        run: |
+          pip install -e cli
+          python -m provision apps storage
+
       - name: kustomize build every overlay
         run: |
           fail=0

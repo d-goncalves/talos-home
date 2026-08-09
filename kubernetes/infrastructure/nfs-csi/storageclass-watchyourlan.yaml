@@ -8,6 +8,13 @@ provisioner: nfs.csi.k8s.io
 parameters:
   server: ${NAS_IP}
   share: ${NAS_DATA_PATH}/watchyourlan
+  # Deterministic path: the same namespace/name always maps to the same
+  # directory, so a rebuilt cluster reattaches its data instead of
+  # provisioning an empty pvc-<uuid>. $$ escapes Flux postBuild, which
+  # would otherwise try to substitute these itself.
+  subDir: $${pvc.metadata.namespace}-$${pvc.metadata.name}
+  # Never delete data on the NAS when a PVC goes away.
+  onDelete: retain
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
 mountOptions:

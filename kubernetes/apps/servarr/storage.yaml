@@ -39,8 +39,8 @@ metadata:
   name: qbittorrent-config
   namespace: servarr
 spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-servarr-config
   resources:
     requests:
       storage: 1Gi
@@ -51,8 +51,8 @@ metadata:
   name: prowlarr-config
   namespace: servarr
 spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-servarr-config
   resources:
     requests:
       storage: 1Gi
@@ -63,8 +63,8 @@ metadata:
   name: sonarr-config
   namespace: servarr
 spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-servarr-config
   resources:
     requests:
       storage: 1Gi
@@ -75,8 +75,8 @@ metadata:
   name: radarr-config
   namespace: servarr
 spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-servarr-config
   resources:
     requests:
       storage: 1Gi
@@ -87,8 +87,8 @@ metadata:
   name: bazarr-config
   namespace: servarr
 spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-servarr-config
   resources:
     requests:
       storage: 1Gi
@@ -99,8 +99,8 @@ metadata:
   name: jellyfin-config
   namespace: servarr
 spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-servarr-config
   resources:
     requests:
       storage: 5Gi
@@ -111,8 +111,8 @@ metadata:
   name: jellyseerr-config
   namespace: servarr
 spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
+  accessModes: [ReadWriteMany]
+  storageClassName: nfs-servarr-config
   resources:
     requests:
       storage: 1Gi

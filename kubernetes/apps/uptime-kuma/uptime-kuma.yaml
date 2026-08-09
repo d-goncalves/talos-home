@@ -4,7 +4,7 @@ metadata:
   name: uptime-kuma-data
   namespace: uptime-kuma
 spec:
-  storageClassName: local-path
+  storageClassName: nfs-uptime-kuma
   accessModes:
     - ReadWriteOnce
   resources:

@@ -17,9 +17,9 @@ metadata:
   name: audiobookshelf-config
   namespace: audiobookshelf
 spec:
-  storageClassName: local-path
+  storageClassName: nfs-audiobookshelf-config
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 1Gi
@@ -30,9 +30,9 @@ metadata:
   name: audiobookshelf-metadata
   namespace: audiobookshelf
 spec:
-  storageClassName: local-path
+  storageClassName: nfs-audiobookshelf-metadata
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 5Gi
@@ -44,6 +44,8 @@ metadata:
   namespace: audiobookshelf
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: audiobookshelf

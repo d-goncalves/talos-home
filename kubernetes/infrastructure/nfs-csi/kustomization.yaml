@@ -14,3 +14,6 @@ resources:
   - storageclass-wallos.yaml
   - storageclass-watchyourlan.yaml
   - storageclass-outline.yaml
+  - storageclass-servarr-config.yaml
+  - storageclass-uptime-kuma.yaml
+  - storageclass-ntfy.yaml

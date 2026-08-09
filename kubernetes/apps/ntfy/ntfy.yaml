@@ -4,7 +4,7 @@ metadata:
   name: ntfy-data
   namespace: ntfy
 spec:
-  storageClassName: local-path
+  storageClassName: nfs-ntfy
   accessModes:
     - ReadWriteOnce
   resources:
