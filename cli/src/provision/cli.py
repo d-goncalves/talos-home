@@ -20,6 +20,7 @@ from .commands.apps import apps
 from .commands.bootstrap import bootstrap
 from .commands.config import config
 from .commands.nas import nas
+from .commands.storage_migrate import storage
 from .commands.lifecycle import apply, check, destroy, init, output, plan, sync, up
 from .commands.preflight import preflight
 from .commands.secrets import secrets
@@ -63,6 +64,7 @@ cli.add_command(preflight)
 cli.add_command(apps)
 cli.add_command(secrets)
 cli.add_command(nas)
+cli.add_command(storage)
 cli.add_command(config)
 cli.add_command(bootstrap)
 cli.add_command(state)
