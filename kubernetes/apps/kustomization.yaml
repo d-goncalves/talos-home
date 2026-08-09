@@ -66,3 +66,39 @@ patches:
         name: prune-protection
         annotations:
           kustomize.toolkit.fluxcd.io/prune: disabled
+  - target:
+      kind: PersistentVolumeClaim
+      name: immich-postgres-nfs
+      namespace: immich
+    patch: |-
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: immich-postgres-nfs
+        namespace: immich
+        annotations:
+          kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+  - target:
+      kind: PersistentVolumeClaim
+      name: actualbudget-data
+      namespace: actualbudget
+    patch: |-
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: actualbudget-data
+        namespace: actualbudget
+        annotations:
+          kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+  - target:
+      kind: PersistentVolumeClaim
+      name: servarr-data
+      namespace: servarr
+    patch: |-
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: servarr-data
+        namespace: servarr
+        annotations:
+          kustomize.toolkit.fluxcd.io/ssa: IfNotPresent

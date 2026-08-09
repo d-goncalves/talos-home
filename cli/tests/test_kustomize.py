@@ -64,9 +64,16 @@ def test_render_is_deterministic():
 # ── protection annotations ───────────────────────────────────────────────────
 
 def patches_by_kind(text: str) -> dict[str, dict]:
+    """Annotations from the blanket, kind-wide patches only.
+
+    Patches that also target a specific `name` are the narrow legacy-PVC ones
+    and would otherwise clobber the kind-wide entry in this dict.
+    """
     doc = parse(text)
     out = {}
     for p in doc["patches"]:
+        if "name" in p["target"]:
+            continue
         body = yaml.safe_load(p["patch"])
         out[p["target"]["kind"]] = body["metadata"]["annotations"]
     return out
@@ -84,12 +91,28 @@ def test_data_bearing_kinds_are_prune_exempt(kind):
 @pytest.mark.parametrize(
     "kind", ["Namespace", "PersistentVolumeClaim", "PersistentVolume"]
 )
-def test_nothing_is_marked_create_only(kind):
-    """Regression: ssa=IfNotPresent was once set on PVCs to dodge an immutable
-    volumeName. It also blocks resources.requests — the one mutable field on a
-    bound claim — so it silently removed the ability to grow a volume through
-    git. The stale field ownership was fixed at the source instead."""
+def test_blanket_patches_never_set_ssa(kind):
+    """ssa=IfNotPresent blocks resources.requests, the one mutable field on a
+    bound claim, so it must never be applied to PVCs wholesale — only to the
+    named legacy ones below."""
     assert SSA not in patches_by_kind(kustomize.render(ALL_ON))[kind]
+
+
+def test_legacy_pvcs_are_create_only_by_name():
+    """These three carry stale kustomize-controller ownership of volumeName.
+    Clearing managedFields does not hold — Flux re-acquires it — so the ssa
+    annotation is the only durable fix. Scoped by name to protect the rest."""
+    doc = parse(kustomize.render(ALL_ON))
+    targeted = {
+        (p["target"]["namespace"], p["target"]["name"])
+        for p in doc["patches"]
+        if "name" in p["target"] and SSA in p["patch"]
+    }
+    assert targeted == set(kustomize.CREATE_ONLY_PVCS)
+
+
+def test_legacy_pvc_patches_survive_disabling_apps():
+    assert kustomize.render(ONE_OFF).count(SSA) == len(kustomize.CREATE_ONLY_PVCS)
 
 
 def test_protection_survives_when_apps_are_disabled():

@@ -31,19 +31,34 @@ HEADER = """\
 # patched.
 #
 # prune: disabled — survives an app being disabled, so data is kept.
-#
-# Deliberately NOT ssa: IfNotPresent. That was the first fix for a bound PVC
-# whose volumeName kustomize-controller owned but git omitted, so every apply
-# tried to clear it and the API server rejected the whole Kustomization. But
-# IfNotPresent also blocks legitimate updates — notably resources.requests,
-# the one spec field that IS mutable on a bound claim — so it would have cost
-# the ability to grow a volume through git, across all PVCs, to work around a
-# problem that affected three of them.
-#
-# The real cause was stale server-side-apply field ownership, fixed once at
-# the source by clearing managedFields on those three PVCs. Since git never
-# specifies volumeName, kustomize-controller does not re-acquire it.
 PRUNE_PROTECTED_KINDS = ("Namespace", "PersistentVolumeClaim", "PersistentVolume")
+
+# ── Legacy PVCs that Flux must not update ────────────────────────────────────
+#
+# These three were bound before this repo managed them, and kustomize-controller
+# holds server-side-apply ownership of spec.volumeName. git never specifies that
+# field, so every apply tries to clear it, and the API server refuses:
+#
+#   spec is immutable after creation except resources.requests ... for bound claims
+#
+# One such PVC fails the dry-run and takes the entire apps Kustomization down
+# with it, so nothing reconciles.
+#
+# Clearing managedFields does NOT fix this permanently: Flux re-acquires the
+# field on its next apply and the failure returns. (A `kubectl apply
+# --server-side --dry-run=server` appears to succeed, because a dry-run never
+# persists ownership — do not trust it here.) ssa: IfNotPresent is the only
+# lever that holds.
+#
+# Scoped to these three by name rather than applied to every PVC, because
+# IfNotPresent also blocks resources.requests — the one field that IS mutable
+# on a bound claim — and that would cost the ability to grow any volume through
+# git. New PVCs are created normally and never develop this problem.
+CREATE_ONLY_PVCS = (
+    ("immich", "immich-postgres-nfs"),
+    ("actualbudget", "actualbudget-data"),
+    ("servarr", "servarr-data"),
+)
 
 
 def _prune_protection() -> str:
@@ -60,6 +75,23 @@ def _prune_protection() -> str:
         annotations:
           kustomize.toolkit.fluxcd.io/prune: disabled"""
         )
+
+    for namespace, name in CREATE_ONLY_PVCS:
+        blocks.append(
+            f"""  - target:
+      kind: PersistentVolumeClaim
+      name: {name}
+      namespace: {namespace}
+    patch: |-
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: {name}
+        namespace: {namespace}
+        annotations:
+          kustomize.toolkit.fluxcd.io/ssa: IfNotPresent"""
+        )
+
     return "\n".join(blocks)
 
 
