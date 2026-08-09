@@ -19,7 +19,9 @@ ITEM_TF_STATE = "Terraform State - talos-home"
 # Note: the old "Talos - talosconfig" document is no longer read. talosconfig
 # now comes from terraform state via `./provision config write`.
 ITEM_PROXMOX = "Proxmox API - talos-home"
-ITEM_TAILSCALE_OAUTH = "Tailscale OAuth - talos-home"
+# Pre-existing item; its username is the OAuth client ID and its password the
+# tskey-client-… secret, which is exactly what the provider wants.
+ITEM_TAILSCALE_OAUTH = "Tailscale Talos"
 ITEM_UNIFI = "UniFi Local Admin - talos-home"
 
 

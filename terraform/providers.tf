@@ -38,10 +38,25 @@ provider "tailscale" {
 
 # Requires a controller-local account (Limited Admin, Local Access Only).
 # Ubiquiti SSO accounts and 2FA are not supported by this provider.
+#
+# Terraform configures every declared provider, whether or not any resource
+# uses it, and this one hard-fails on empty credentials. So when unifi_enabled
+# is false there is nothing in 1Password to read and placeholders are supplied
+# instead: no unifi resources exist in that case, so the provider is never
+# actually contacted.
 provider "unifi" {
-  username       = local.unifi_username
-  password       = local.unifi_password
-  api_url        = var.unifi_api_url
+  api_url        = var.unifi_api_url != "" ? var.unifi_api_url : "https://unifi.invalid"
   site           = var.unifi_site
   allow_insecure = var.unifi_insecure
+
+  # With username/password the provider performs a login POST while it is being
+  # configured, and Terraform configures every provider that any resource block
+  # references — even one whose for_each is empty. So with unifi_enabled = false
+  # an unreachable controller failed the whole plan.
+  #
+  # api_key auth skips that login, so a dummy key keeps the provider
+  # configurable while disabled. It is never used: no unifi resources exist.
+  api_key  = var.unifi_enabled ? null : "disabled-not-in-use"
+  username = var.unifi_enabled ? local.unifi_username : null
+  password = var.unifi_enabled ? local.unifi_password : null
 }

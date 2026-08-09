@@ -24,6 +24,8 @@ from .commands.preflight import preflight
 from .commands.secrets import secrets
 from .commands.state import state
 from .commands.status import health, status
+from .console import error
+from .shell import CommandError
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
@@ -71,7 +73,17 @@ cli.add_command(health)
 def main() -> None:
     # The ./provision shim runs us as `python -m provision`, which would
     # otherwise show up as the program name throughout the help text.
-    cli(prog_name=os.environ.get("PROVISION_PROG") or None)
+    try:
+        cli(prog_name=os.environ.get("PROVISION_PROG") or None)
+    except CommandError as exc:
+        # A failing terraform/kubectl/op has already printed its own error to
+        # the terminal. A Python traceback on top of that is noise that buries
+        # the message the user actually needs.
+        error(f"{exc.argv[0]} exited {exc.returncode}")
+        raise SystemExit(exc.returncode)
+    except KeyboardInterrupt:
+        error("interrupted")
+        raise SystemExit(130)
 
 
 if __name__ == "__main__":

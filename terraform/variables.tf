@@ -16,9 +16,9 @@ variable "op_item_proxmox" {
 }
 
 variable "op_item_tailscale" {
-  description = "1Password item with the Tailscale OAuth client (username = ID, password = secret)"
+  description = "1Password item with the Tailscale OAuth client (username = client ID, password = tskey-client-… secret)"
   type        = string
-  default     = "Tailscale OAuth - talos-home"
+  default     = "Tailscale Talos"
 }
 
 variable "op_item_unifi" {
