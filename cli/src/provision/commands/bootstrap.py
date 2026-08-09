@@ -45,11 +45,13 @@ def _apply_secret(name: str, namespace: str, literals: dict[str, str]) -> None:
     run(["kubectl", "apply", "-f", "-"], input_text=manifest, capture=True)
 
 
-def _prompt_var(name: str, description: str) -> str:
-    """Read a value from the environment, falling back to a prompt."""
+def _prompt_var(name: str, description: str, default: str | None = None) -> str:
+    """Resolve a value: environment first, then provision.toml, then a prompt."""
     value = os.environ.get(name)
     if value:
         return value
+    if default:
+        return default
     return click.prompt(f"{description} ({name})")
 
 
@@ -123,14 +125,18 @@ def bootstrap_secrets() -> None:
     success(f"{ESO_NAMESPACE}/{ESO_SECRET}")
 
     # ── cluster-vars ──────────────────────────────────────────────────────
-    # The NAS is not terraform-managed (UniFi exposes no API for UNAS shares),
-    # so those two come from the environment or a prompt.
+    # The NAS is not terraform-managed (no UniFi API exposes UNAS shares), but
+    # its address and data path live in provision.toml so this does not have to
+    # prompt. Environment variables still win, for a one-off override.
+    nas = cfg.get("nas") or {}
     literals = {
         "TAILNET_DOMAIN": _require_cfg(cfg, "cluster", "tailnet_domain"),
         "NODE_IP": node_ip,
         "LAN_SUBNET": _require_cfg(cfg, "network", "lan_subnet"),
-        "NAS_IP": _prompt_var("NAS_IP", "NAS IP address"),
-        "NAS_DATA_PATH": _prompt_var("NAS_DATA_PATH", "NAS data base path"),
+        "NAS_IP": _prompt_var("NAS_IP", "NAS IP address", nas.get("ip")),
+        "NAS_DATA_PATH": _prompt_var(
+            "NAS_DATA_PATH", "NAS data base path", nas.get("data_path")
+        ),
     }
 
     _ensure_namespace(FLUX_NAMESPACE)

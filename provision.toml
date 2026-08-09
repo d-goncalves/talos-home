@@ -33,6 +33,17 @@ nameservers = ["192.168.1.1"]
 # Advertised to the tailnet as a subnet route.
 lan_subnet = "192.168.1.0/24"
 
+[nas]
+# UniFi UNAS Pro. Not managed by Terraform — no UniFi API exposes NFS shares —
+# but recorded here so `./provision preflight` can verify the node is allowed
+# to mount, and so bootstrap does not have to prompt for these.
+#
+# ⚠️  Exports are allow-listed per client IP. A node whose IP is not on the
+#     list is denied every share and every NFS-backed app fails to mount.
+#     Check with: showmount -e <ip>
+ip        = "192.168.1.12"
+data_path = "/volume/7c4b253e-2985-4fe6-89f5-91038758515f/.srv/.unifi-drive/media/.data"
+
 [tailscale]
 enabled = true
 # Must be listed under tagOwners in the tailnet ACL.
