@@ -18,20 +18,20 @@ kubernetes_version = "v1.36.0"
 tailnet_domain     = "<tailnet>.ts.net"
 
 [proxmox]
-endpoint         = "https://<pve-ip>:8006/"
+endpoint         = "https://192.168.1.10:8006/"
 node_name        = "pve"
 ssh_username     = "root"
 iso_datastore_id = "local"
 insecure         = true
 
 [network]
-gateway       = "<gateway-ip>"
+gateway       = "192.168.1.1"
 subnet_prefix = 24
 # Point at the router or the Pi-hole CT, never at 100.100.100.100 (MagicDNS):
 # a host that is not on the tailnet gets hanging lookups on every query.
-nameservers = ["<gateway-ip>"]
+nameservers = ["192.168.1.1"]
 # Advertised to the tailnet as a subnet route.
-lan_subnet = "<lan-subnet>"
+lan_subnet = "192.168.1.0/24"
 
 [tailscale]
 enabled = true
@@ -42,7 +42,7 @@ tags = ["tag:k8s"]
 # Manages the static DHCP reservation only. UNAS NFS shares are not exposed by
 # any UniFi API, so exports stay a one-time manual step in the UNAS UI.
 enabled = false
-api_url = "https://<unifi-ip>"
+api_url = "https://192.168.1.1"
 site    = "default"
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -57,8 +57,8 @@ site    = "default"
 
 [nodes.talos-cp-01]
 vm_id        = 110
-ip           = "<node-ip>"
-mac_address  = "<node-mac>"
+ip           = "192.168.1.21"
+mac_address  = "AA:BB:CC:DD:EE:FF"
 machine_type = "controlplane"
 
 cpu_cores = 2

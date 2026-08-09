@@ -12,9 +12,9 @@ import os
 import click
 
 from .. import onepassword as op
-from .. import tf
+from .. import settings, tf
 from ..console import fail, info, rule, success, warn
-from ..shell import require, run
+from ..shell import require, run, try_run
 
 ESO_NAMESPACE = "external-secrets"
 ESO_SECRET = "onepassword-service-account-token"
@@ -53,6 +53,13 @@ def _prompt_var(name: str, description: str) -> str:
     return click.prompt(f"{description} ({name})")
 
 
+def _require_cfg(cfg: dict, table: str, key: str) -> str:
+    value = (cfg.get(table) or {}).get(key)
+    if not value:
+        fail(f"provision.toml: [{table}].{key} is not set")
+    return value
+
+
 @click.group("bootstrap")
 def bootstrap() -> None:
     """Seed cluster secrets and start Flux."""
@@ -70,6 +77,39 @@ def bootstrap_secrets() -> None:
 
     rule("Cluster secrets")
 
+    # ── Resolve config, and check we are pointed at the right cluster ─────
+    # Values come from provision.toml, not from terraform outputs. The outputs
+    # are derived from this same file, so reading the source works identically
+    # for a terraform-provisioned cluster and is the only thing that works for
+    # one that predates terraform — a hand-built cluster has no state to read.
+    cfg = settings.load()
+    nodes = cfg.get("nodes") or {}
+    controlplanes = sorted(
+        name for name, n in nodes.items()
+        if n.get("machine_type", "controlplane") == "controlplane"
+    )
+    if not controlplanes:
+        fail("provision.toml declares no controlplane node")
+
+    node_ip = nodes[controlplanes[0]]["ip"]
+
+    # provision.toml describes the cluster it provisions, which is not
+    # necessarily the cluster kubectl points at. Check before mutating
+    # anything, and before prompting for values that may be discarded.
+    ok, current = try_run(
+        ["kubectl", "get", "nodes", "-o",
+         "jsonpath={.items[*].status.addresses[?(@.type=='InternalIP')].address}"],
+        capture=True,
+        echo=False,
+    )
+    if ok and current.strip() and node_ip not in current.split():
+        warn(
+            f"provision.toml describes node {node_ip}, but the current kube "
+            f"context is node(s) {current.strip()}."
+        )
+        if not click.confirm("  Seed this cluster anyway?", default=False):
+            fail("aborted — point kubectl at the right cluster, or fix provision.toml")
+
     # ── ESO service account token ─────────────────────────────────────────
     token = op.field(op.ITEM_ESO_TOKEN, "token")
     if not token:
@@ -83,13 +123,12 @@ def bootstrap_secrets() -> None:
     success(f"{ESO_NAMESPACE}/{ESO_SECRET}")
 
     # ── cluster-vars ──────────────────────────────────────────────────────
-    # Terraform knows the node and network values. The NAS is not
-    # terraform-managed (UniFi exposes no API for UNAS shares), so those two
-    # come from the environment or a prompt.
+    # The NAS is not terraform-managed (UniFi exposes no API for UNAS shares),
+    # so those two come from the environment or a prompt.
     literals = {
-        "TAILNET_DOMAIN": tf.require_output("tailnet_domain"),
-        "NODE_IP": tf.require_output("controlplane_ip"),
-        "LAN_SUBNET": tf.require_output("lan_subnet"),
+        "TAILNET_DOMAIN": _require_cfg(cfg, "cluster", "tailnet_domain"),
+        "NODE_IP": node_ip,
+        "LAN_SUBNET": _require_cfg(cfg, "network", "lan_subnet"),
         "NAS_IP": _prompt_var("NAS_IP", "NAS IP address"),
         "NAS_DATA_PATH": _prompt_var("NAS_DATA_PATH", "NAS data base path"),
     }
