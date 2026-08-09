@@ -162,5 +162,99 @@ def nas_check() -> None:
     success("every configured node is on the export allow-list")
 
 
+def _nfs_pods() -> list[tuple[str, str, str]]:
+    """Running pods backed by an NFS PVC, as (namespace, pod, phase)."""
+    ok, _ = try_run(["kubectl", "get", "pvc", "-A", "-o", "json"], capture=True, echo=False)
+    if not ok:
+        return []
+
+    pvcs = json.loads(run(["kubectl", "get", "pvc", "-A", "-o", "json"],
+                          capture=True, echo=False))
+    nfs_claims = set()
+    for item in pvcs.get("items", []):
+        sc = item["spec"].get("storageClassName") or ""
+        # A static PV has no storage class; treat it as NFS-backed too, since
+        # actualbudget and servarr bind that way.
+        if sc.startswith("nfs-") or not sc:
+            nfs_claims.add((item["metadata"]["namespace"], item["metadata"]["name"]))
+
+    pods = json.loads(run(["kubectl", "get", "pods", "-A", "-o", "json"],
+                          capture=True, echo=False))
+    out = []
+    for pod in pods.get("items", []):
+        phase = pod["status"].get("phase", "?")
+        # Succeeded/Failed pods are already terminated: they hold no mount and
+        # deleting them achieves nothing.
+        if phase in ("Succeeded", "Failed"):
+            continue
+        ns = pod["metadata"]["namespace"]
+        claims = {
+            v["persistentVolumeClaim"]["claimName"]
+            for v in (pod["spec"].get("volumes") or [])
+            if v.get("persistentVolumeClaim")
+        }
+        if any((ns, c) in nfs_claims for c in claims):
+            out.append((ns, pod["metadata"]["name"], phase))
+    return out
+
+
+@click.command("recover")
+@click.option("--wait", default=300, help="Seconds to wait for the NAS to return.")
+@click.option("--yes", is_flag=True, help="Do not ask before restarting pods.")
+def nas_recover(wait: int, yes: bool) -> None:
+    """Recover the cluster after the NAS has been away.
+
+    Mounts use `hard`, so I/O to a missing server blocks forever rather than
+    erroring — which protects data but leaves processes in uninterruptible
+    sleep that kubelet cannot kill. When the NAS returns, healthy mounts resume
+    on their own; anything already wedged needs its pod recreated.
+
+    This waits for the NAS, proves it is writable, then restarts only the pods
+    backed by NFS.
+    """
+    require("kubectl")
+    cfg = settings.load()
+    nas_ip = (cfg.get("nas") or {}).get("ip")
+    if not nas_ip:
+        fail("provision.toml has no [nas].ip")
+
+    rule("Waiting for the NAS")
+    deadline = time.time() + wait
+    reachable = False
+    while time.time() < deadline:
+        ok, _ = try_run(["showmount", "-e", nas_ip], capture=True, echo=False)
+        if ok:
+            reachable = True
+            break
+        time.sleep(5)
+
+    if not reachable:
+        fail(f"{nas_ip} still not serving NFS after {wait}s")
+    success(f"{nas_ip} is serving NFS again")
+
+    affected = _nfs_pods()
+    if not affected:
+        info("no NFS-backed pods found")
+        return
+
+    rule("NFS-backed pods")
+    for ns, pod, phase in affected:
+        marker = "" if phase == "Running" else f"  [{phase}]"
+        click.echo(f"  {ns}/{pod}{marker}")
+
+    click.echo()
+    warn(f"{len(affected)} pods will be deleted so they remount cleanly.")
+    warn("Their controllers recreate them; data on the NAS is untouched.")
+    if not yes and not click.confirm("  Proceed?", default=False):
+        fail("aborted")
+
+    for ns, pod, _ in affected:
+        try_run(["kubectl", "delete", "pod", "-n", ns, pod, "--wait=false"],
+                capture=True, echo=False)
+    success(f"restarted {len(affected)} pods")
+    info("Watch them settle with: ./provision status")
+
+
 nas.add_command(nas_verify)
 nas.add_command(nas_check)
+nas.add_command(nas_recover)

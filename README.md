@@ -295,15 +295,39 @@ whatever stopped it.
 
 ### What survives a full node wipe
 
-| Storage | Apps | Survives? |
+Verified against the live cluster, not assumed. Check it yourself with:
+`kubectl get pvc -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,SC:.spec.storageClassName`
+
+| Storage | What is on it | Survives a node wipe? |
 |---|---|---|
-| NFS (Unifi NAS) | Jellyfin, Immich, Sonarr, Radarr, Prowlarr, Bazarr, qBittorrent, Audiobookshelf, Actual Budget, Wallos, Homebox, AdventureLog, Gitea, Outline | ✅ |
-| local-path (node disk) | Uptime Kuma monitors, Prometheus metrics, Grafana dashboards | ❌ |
+| **NFS** | Immich (library + postgres), Outline (data + postgres), AdventureLog (media + postgres), Gitea repos, Wallos, Homebox, Audiobookshelf *audiobooks*, Actual Budget, servarr *media* | ✅ |
+| **local-path** | **All servarr app config** (Sonarr, Radarr, Prowlarr, Bazarr, Jellyfin, Jellyseerr, qBittorrent), Audiobookshelf *config + metadata*, Uptime Kuma, ntfy, Grafana, Prometheus, Loki, Immich valkey | ❌ |
+
+> Earlier versions of this file claimed the servarr configs and Audiobookshelf
+> metadata were on NFS. They are not. Those apps keep their **media** on NFS but
+> their **configuration on local-path**, so a node rebuild loses indexers,
+> quality profiles, download clients and library metadata even though the files
+> themselves are intact.
 
 ### Post-recovery manual steps
 
-- **Uptime Kuma** — monitors need re-adding in the UI
-- **Outline**, **Ntfy**, **Servarr** — restore automatically ✅
+- **Servarr** — re-add indexers, download clients and quality profiles
+- **Audiobookshelf** — library config and metadata need rebuilding
+- **Uptime Kuma** — monitors need re-adding
+- **Outline**, **ntfy**, **Immich**, **Gitea** — restore automatically ✅
+
+### After the NAS restarts
+
+Mounts use `hard`, so I/O blocks rather than erroring while the NAS is away —
+that protects data, but leaves processes kubelet cannot kill.
+
+```bash
+./provision nas recover
+```
+
+Waits for the NAS, proves it is writable, then restarts only NFS-backed pods
+(16 at present, across 9 namespaces). Cleanest of all is to avoid the situation:
+scale those apps down before a planned NAS reboot.
 
 ### Secrets management
 
