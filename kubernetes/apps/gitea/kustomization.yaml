@@ -1,15 +1,19 @@
 # Gitea is deployed via Helm (not Flux HelmRelease) to avoid a chicken-and-egg
 # dependency (Flux uses Gitea as its GitRepository source).
 #
-# To install or upgrade:
-#   helm repo add gitea https://dl.gitea.com/charts
-#   helm upgrade --install gitea gitea/gitea -n gitea -f values.yaml
+# To install or upgrade, always use the script — do NOT run helm against values.yaml
+# directly. It expands ${TAILNET_DOMAIN} (Flux postBuild does not apply to this file)
+# and passes --force-conflicts, without which the upgrade aborts on a field-manager
+# conflict left behind by an old `kubectl patch` on the data volume's claimName:
+#   ./scripts/deploy-gitea.sh
 #
-# The admin password is stored in 1Password ("Gitea" in Server Infrastructure vault).
-# passwordMode: initialOnlyNoReset means restarts will never overwrite the password.
+# The admin credential lives in 1Password ("Gitea" in Server Infrastructure vault) and
+# reaches the pod as the gitea-admin-secret Secret via externalsecret.yaml. Combined
+# with passwordMode: initialOnlyNoReset, restarts never overwrite the password.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - pvc.yaml
   - ingress.yaml
   - service.yaml
+  - externalsecret.yaml

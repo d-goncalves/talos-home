@@ -1,0 +1,107 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  All configuration for this cluster.
+#
+#  This file is committed. It contains no secrets: those live in 1Password and
+#  are read directly by Terraform (see terraform/secrets.tf) and by External
+#  Secrets Operator in-cluster.
+#
+#  Apply changes with:
+#      ./provision sync     regenerate the generated files
+#      ./provision apply    push infrastructure changes
+#      git commit && push Flux picks up app changes
+# ─────────────────────────────────────────────────────────────────────────────
+
+[cluster]
+name               = "talos-home"
+talos_version      = "v1.13.2"
+kubernetes_version = "v1.36.0"
+tailnet_domain     = "<tailnet>.ts.net"
+
+[proxmox]
+endpoint         = "https://<pve-ip>:8006/"
+node_name        = "pve"
+ssh_username     = "root"
+iso_datastore_id = "local"
+insecure         = true
+
+[network]
+gateway       = "<gateway-ip>"
+subnet_prefix = 24
+# Point at the router or the Pi-hole CT, never at 100.100.100.100 (MagicDNS):
+# a host that is not on the tailnet gets hanging lookups on every query.
+nameservers = ["<gateway-ip>"]
+# Advertised to the tailnet as a subnet route.
+lan_subnet = "<lan-subnet>"
+
+[tailscale]
+enabled = true
+# Must be listed under tagOwners in the tailnet ACL.
+tags = ["tag:k8s"]
+
+[unifi]
+# Manages the static DHCP reservation only. UNAS NFS shares are not exposed by
+# any UniFi API, so exports stay a one-time manual step in the UNAS UI.
+enabled = false
+api_url = "https://<unifi-ip>"
+site    = "default"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Nodes
+#
+#  ⚠️  The running cluster is Proxmox VM 100. The vm_id below is deliberately
+#      free so a first apply cannot touch it.
+#
+#  Written for N nodes, expected to run with one: the Proxmox host has 15 GiB
+#  and 4 cores in total, which is not enough for a three-node control plane.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[nodes.talos-cp-01]
+vm_id        = 110
+ip           = "<node-ip>"
+mac_address  = "<node-mac>"
+machine_type = "controlplane"
+
+cpu_cores = 2
+# MiB. memory_floating > 0 enables ballooning, which is how the guest ended up
+# seeing ~8 GiB of a 10 GiB VM and thrashing. Leave it at 0.
+memory_dedicated = 10240
+memory_floating  = 0
+
+disk_size    = 64
+datastore_id = "local-lvm"
+install_disk = "/dev/sda"
+interface    = "ens18"
+bridge       = "vmbr0"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Apps
+#
+#  false removes the app from the generated kustomization. Flux prunes its
+#  Deployments, StatefulSets, Services and Ingresses, and the CPU and memory
+#  come back.
+#
+#  Namespaces, PVCs and PVs are annotated prune-exempt, so data survives and
+#  flipping an app back to true reattaches the same volumes.
+#
+#  Run `provision apps protect` once before your first disable: Flux reads that
+#  annotation from the object in the cluster, not from git.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[apps]
+gitea          = true   # GitOps source of truth — Flux reads from it. Leave on.
+immich         = true   # heaviest app here: server + postgres + valkey
+adventurelog   = true
+monitoring     = true   # Grafana/Loki/Prometheus — first to drop when tight
+servarr        = true
+outline        = true
+audiobookshelf = true
+actualbudget   = true
+wallos         = true
+homebox        = true
+homepage       = true
+ntfy           = true
+uptime-kuma    = true
+watchyourlan   = true
+bentopdf       = true
+it-tools       = true
+librespeed     = true

@@ -1,3 +1,22 @@
+# GENERATED FILE — do not edit by hand.
+#
+# Source of truth: provision.toml at the repo root, [apps] table.
+# Regenerate with: provision sync
+#
+# Disabled apps are omitted from `resources`. Both Flux Kustomizations run with
+# prune: true, so Flux deletes their workloads and the memory comes back.
+#
+# The patches at the bottom mark every Namespace, PersistentVolumeClaim and
+# PersistentVolume as prune-exempt. Without them, pruning an app would delete
+# its Namespace, and namespace deletion cascades to PVCs regardless of the
+# Retain reclaim policy — the app would come back empty on re-enable, with its
+# data orphaned in a stale NFS subdirectory.
+#
+# ORDERING: Flux reads that annotation from the object in the CLUSTER, not from
+# git. An object must already carry it before it leaves this file, or it gets
+# pruned anyway. `provision apps disable` enforces this; `provision apps protect`
+# applies the annotations immediately instead of waiting for a reconcile.
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -5,16 +24,47 @@ resources:
   - immich/
   - adventurelog/
   - monitoring/
-  - actualbudget/
-  - bentopdf/
-  - wallos/
-  - audiobookshelf/
-  - watchyourlan/
-  - homebox/
-  - librespeed/
-  - it-tools/
-  - homepage/
   - servarr/
-  - uptime-kuma/
-  - ntfy/
   - outline/
+  - audiobookshelf/
+  - actualbudget/
+  - wallos/
+  - homebox/
+  - homepage/
+  - ntfy/
+  - uptime-kuma/
+  - watchyourlan/
+  - bentopdf/
+  - it-tools/
+  - librespeed/
+
+patches:
+  - target:
+      kind: Namespace
+    patch: |-
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: prune-protection
+        annotations:
+          kustomize.toolkit.fluxcd.io/prune: disabled
+  - target:
+      kind: PersistentVolumeClaim
+    patch: |-
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: prune-protection
+        annotations:
+          kustomize.toolkit.fluxcd.io/prune: disabled
+          kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+  - target:
+      kind: PersistentVolume
+    patch: |-
+      apiVersion: v1
+      kind: PersistentVolume
+      metadata:
+        name: prune-protection
+        annotations:
+          kustomize.toolkit.fluxcd.io/prune: disabled
+          kustomize.toolkit.fluxcd.io/ssa: IfNotPresent

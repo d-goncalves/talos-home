@@ -4,3 +4,26 @@ talos/patches/tailscale-ext.yaml
 talos/talosconfig
 talos/machine-config/
 secrets/
+
+# Local agent/editor tooling. .codex/config.toml holds MCP server credentials
+# in plaintext — it must never be committed.
+.codex/
+.claude/
+
+# Terraform. State holds the cluster PKI; the generated tfvars mirrors
+# provision.toml and is rebuilt on every run.
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+terraform/terraform.tfvars
+terraform/terraform.tfvars.json
+terraform/*.auto.tfvars
+
+# Python
+__pycache__/
+*.egg-info/
+.venv/
+venv/
+
+.DS_Store

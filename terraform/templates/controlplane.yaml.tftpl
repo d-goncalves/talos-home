@@ -1,3 +1,7 @@
+# Controlplane patch, with the tailnet domain templated from provision.toml.
+#
+# The CoreDNS rewrite is what lets Flux resolve the Gitea SSH host to the
+# in-cluster LoadBalancer service instead of going out over the tailnet.
 cluster:
   allowSchedulingOnControlPlanes: true
   inlineManifests:
@@ -20,7 +24,7 @@ cluster:
                     class error
                 }
                 prometheus :9153
-                rewrite name gitea-ssh.<tailnet>.ts.net gitea-ssh-tailscale.gitea.svc.cluster.local
+                rewrite name gitea-ssh.${tailnet_domain} gitea-ssh-tailscale.gitea.svc.cluster.local
                 kubernetes cluster.local in-addr.arpa ip6.arpa {
                     pods insecure
                     fallthrough in-addr.arpa ip6.arpa

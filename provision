@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# Repo-local entrypoint for the provisioning CLI.
+#
+#     ./provision --help
+#
+# Everything lives in a .venv inside this repo, so nothing is installed into
+# your global Python and the command cannot leak into other projects. The venv
+# is created on first run and reused after that.
+#
+# The package itself is installed editable, so edits under cli/src/provision/
+# take effect immediately with no reinstall.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV="$ROOT/.venv"
+PY="$VENV/bin/python"
+
+bootstrap() {
+  echo "==> First run: creating $VENV" >&2
+
+  if command -v uv >/dev/null 2>&1; then
+    uv venv --quiet "$VENV"
+    VIRTUAL_ENV="$VENV" uv pip install --quiet --editable "$ROOT/cli"
+  else
+    python3 -m venv "$VENV"
+    "$VENV/bin/pip" install --quiet --upgrade pip
+    "$VENV/bin/pip" install --quiet --editable "$ROOT/cli"
+  fi
+
+  echo "==> Ready" >&2
+}
+
+# Rebuild when the venv is missing or the package is not importable — the
+# latter covers a half-finished bootstrap or a dependency change.
+if [[ ! -x "$PY" ]] || ! "$PY" -c "import provision" >/dev/null 2>&1; then
+  bootstrap
+fi
+
+# So help text reads "./provision ..." rather than "python -m provision ...".
+export PROVISION_PROG="./provision"
+
+exec "$PY" -m provision "$@"

@@ -1,0 +1,24 @@
+# Per-node network and install patch, rendered from the [nodes] and [network]
+# tables in provision.toml.
+machine:
+  network:
+    hostname: ${hostname}
+    interfaces:
+      - interface: ${interface}
+        addresses:
+          - ${ip}/${subnet_prefix}
+        routes:
+          - network: 0.0.0.0/0
+            gateway: ${gateway}
+        dhcp: false
+    nameservers:
+%{ for ns in nameservers ~}
+      - ${ns}
+%{ endfor ~}
+  install:
+    disk: ${install_disk}
+    # Image Factory installer carrying the system extensions. System extensions
+    # cannot be added to a running node, so this has to be correct at install
+    # time.
+    image: ${installer_image}
+    wipe: false

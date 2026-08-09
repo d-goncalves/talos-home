@@ -1,0 +1,12 @@
+# ExtensionServiceConfig is a separate Talos config document, not a MachineConfig
+# section. It is delivered as an additional document in the config bundle.
+#
+# The auth key comes from tailscale_tailnet_key, minted fresh on every apply.
+# Nothing is templated onto disk, so there is no gitignored file holding a live
+# key any more.
+apiVersion: v1alpha1
+kind: ExtensionServiceConfig
+name: tailscale
+environment:
+  - TS_AUTHKEY=${authkey}
+  - TS_EXTRA_ARGS=--advertise-routes=${lan_subnet}

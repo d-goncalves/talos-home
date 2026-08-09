@@ -1,9 +1,22 @@
+# Gitea here is a single replica backed by SQLite and a LevelDB queue on one RWX
+# volume, so exactly one pod may hold /data at a time. The chart's default
+# RollingUpdate (maxSurge 100%, maxUnavailable 0) starts the new pod before the old
+# one exits, and the new pod dies on "unable to lock level db at /data/queues/common"
+# while the old pod holds the lock — deadlocking every upgrade. Recreate is required.
+strategy:
+  type: Recreate
+  rollingUpdate: null
+
 gitea:
   admin:
     email: REDACTED_EMAIL
-    username: admin
-    # Password is managed via 1Password ("Gitea" in Server Infrastructure vault)
-    # Set on first run only — subsequent restarts will not overwrite it
+    # Username and password come from the gitea-admin-secret Secret, synced from
+    # 1Password ("Gitea" in Server Infrastructure vault) by externalsecret.yaml.
+    # This keeps the credential out of both the repo and the pod's env.
+    existingSecret: gitea-admin-secret
+    # Do NOT change this to keepUpdated (the chart default). keepUpdated makes the
+    # configure-gitea init container run `admin user change-password` on every pod
+    # start, silently overwriting the real password with the chart's value.
     passwordMode: initialOnlyNoReset
   config:
     cache:
@@ -14,6 +27,10 @@ gitea:
     queue:
       TYPE: level
     server:
+      # ${TAILNET_DOMAIN} is NOT substituted by Flux here — this file is applied by
+      # raw `helm upgrade`, which has no postBuild substitution. scripts/deploy-gitea.sh
+      # expands it from the flux-system/cluster-vars Secret. Do not run helm against
+      # this file directly or ROOT_URL will be set to the literal string.
       DOMAIN: gitea.${TAILNET_DOMAIN}
       ROOT_URL: https://gitea.${TAILNET_DOMAIN}
     session:
@@ -21,9 +38,14 @@ gitea:
 
 persistence:
   enabled: true
-  existingClaim: gitea-shared-storage-nfs
-  size: 10Gi
-  storageClass: local-path
+  mount: true
+  # `existingClaim` is NOT a key in this chart (12.x) — it was silently ignored, so
+  # the chart kept mounting its own gitea-shared-storage PVC and the Deployment had
+  # to be `kubectl patch`ed to reach the real NFS volume. The correct keys are
+  # create + claimName. The PVC itself is declared in pvc.yaml (NFS, RWX).
+  # Repos and the SQLite DB live on this claim — pointing it elsewhere loses data.
+  create: false
+  claimName: gitea-shared-storage-nfs
 
 postgresql:
   enabled: false

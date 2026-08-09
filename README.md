@@ -179,108 +179,131 @@ sequenceDiagram
 ## Repo structure
 
 ```
+provision          # the CLI entrypoint — ./provision --help
+provision.toml     # ALL configuration — cluster, network, nodes, which apps run
+terraform/         # provisions the Proxmox VM, Talos, Tailscale, UniFi reservation
+  templates/       # Talos config patches, rendered from provision.toml
+  secrets.tf       # reads credentials from 1Password at plan time
+cli/               # implementation of ./provision (Python + click)
 kubernetes/
-  apps/            # user-facing applications
+  apps/            # user-facing applications (kustomization.yaml is generated)
   infrastructure/  # cluster-level components (Tailscale operator, NFS CSI, ESO)
   flux/            # FluxCD bootstrap (GitRepository + Kustomizations)
-talos/
-  patches/         # Talos machine config patches (network.yaml tracked; tailscale*.yaml gitignored)
 scripts/
-  recover.sh       # disaster recovery — bootstraps secrets, tooling, and repo from scratch
+  recover.sh       # bare-machine bootstrap: install tools, clone repo, hand off
+  deploy-gitea.sh  # Gitea helm deploy (not a Flux HelmRelease — see the script)
 docs/
   draw_arch.py     # generates architecture.png (requires pip install -r docs/requirements.txt)
   architecture.png # rendered diagram
 ```
 
+## Provisioning
+
+Terraform builds the node; Flux fills it. See [terraform/README.md](terraform/README.md)
+and [cli/README.md](cli/README.md).
+
+```bash
+./provision up      # a machine from scratch, end to end
+./provision check   # is anything pending?
+```
+
+`./provision` at the repo root is the only entrypoint. It creates a `.venv`
+inside the repo on first run, so nothing is installed into your global Python
+and the command cannot leak into other projects.
+
+Terraform stops at a healthy, empty cluster. It does **not** manage NAS NFS
+exports — no UniFi API exposes UNAS shares, so those stay a one-time manual
+step in the UNAS UI and are consumed by the `nfs-csi` StorageClasses.
+
+[provision.toml](provision.toml) is the single source of truth for everything
+non-secret: cluster, network, nodes and which apps run. `terraform.tfvars.json`
+and `kubernetes/apps/kustomization.yaml` are generated from it.
+
+**No credential appears anywhere in this repo.** Terraform reads them from
+1Password itself via the `onepassword` provider; ESO does the same in-cluster.
+Authenticate with `OP_SERVICE_ACCOUNT_TOKEN` or `OP_ACCOUNT`, then
+`provision secrets check`.
+
+> Terraform state still contains the cluster CA private key, the bootstrap
+> tokens and the secretbox encryption key — `talos_machine_secrets` generates
+> them, so they cannot come from 1Password. State is gitignored; back it up
+> with `provision state backup` after every apply.
+
+## Turning apps on and off
+
+[provision.toml](provision.toml) decides which apps Flux deploys.
+
+```bash
+./provision apps protect              # once, before the first disable
+./provision apps disable adventurelog
+git commit -am "disable adventurelog" && git push
+```
+
+Flux prunes the workloads and the memory comes back. Namespaces, PVCs and PVs
+are annotated prune-exempt, so data survives and `provision apps enable` reattaches
+the same volumes.
+
+> Flux reads that annotation from the object **in the cluster**, not from git,
+> so it has to be applied before an app leaves the source. `provision apps disable`
+> refuses to run until it can verify this.
+
 ## Recovery
 
+Recovering a wiped node is the same operation as provisioning a new one.
+
 ### Prerequisites
-- NAS must be online (all NFS-backed app data lives there)
-- Tailscale and 1Password signed in on your Mac
-- The repo cloned locally, or accessible via GitHub mirror
+- NAS online — all NFS-backed app data lives there
+- 1Password unlocked (`OP_ACCOUNT` or `OP_SERVICE_ACCOUNT_TOKEN`)
+- Proxmox reachable
 
-> **Gitea dependency**: The recovery script is hosted on Gitea, which runs on the cluster. If the cluster is completely gone, use the GitHub mirror instead (same content, push-mirrored on every commit).
-
-### Step 1 — Reinstall Talos on the new VM
-
-In Proxmox, boot the new VM from the Talos ISO, then apply the machine config:
+### On a machine that already has the repo
 
 ```bash
-talosctl apply-config --insecure --nodes <node-ip> --file talos/controlplane.yaml
+./provision up
 ```
 
-> The machine config is in this repo under `talos/`. Fetch it from 1Password or the GitHub mirror if Gitea is unavailable.
+### On a bare machine
 
-### Step 2 — Restore tooling and repo
-
-Pass your environment variables so the script can locate Gitea, populate the `cluster-vars` secret, and generate the Tailscale patch files automatically:
+`scripts/recover.sh` installs the tooling and clones the repo, then hands off
+to the CLI. It is fetched from the **GitHub mirror**, not Gitea — Gitea runs on
+the cluster being recovered.
 
 ```bash
-# If Gitea is reachable (cluster partially up):
-NODE_IP=<node-ip> \
-NAS_IP=<nas-ip> \
-LAN_SUBNET=<lan-subnet> \
-NAS_DATA_PATH=<nas-data-path> \
-TAILNET_DOMAIN=<tailnet>.ts.net \
-  bash <(curl -s https://gitea.<tailnet>.ts.net/admin/talos-home/raw/branch/master/scripts/recover.sh)
-
-# If the cluster is completely gone — use the GitHub mirror:
-NODE_IP=<node-ip> \
-NAS_IP=<nas-ip> \
-LAN_SUBNET=<lan-subnet> \
-NAS_DATA_PATH=<nas-data-path> \
-TAILNET_DOMAIN=<tailnet>.ts.net \
-  bash <(curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh)
+bash <(curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh)
 ```
 
-Any variable not passed as an env var will be prompted interactively.
-
-This script:
-- Installs `talosctl`, `kubectl`, `flux` if missing
-- Fetches `talosconfig` from 1Password and configures the endpoint
-- Fetches the Tailscale auth key from 1Password and generates the gitignored `talos/patches/tailscale-ext.yaml` and `talos/patches/tailscale.yaml`
-- Bootstraps both ESO and Flux secrets (see below)
-- Clones the repo to `~/talos`
-
-`recover.sh` creates two secrets that are never stored in git:
-
-| Secret | Namespace | Keys |
-|---|---|---|
-| `onepassword-service-account-token` | `external-secrets` | `token` — ESO → 1Password auth |
-| `cluster-vars` | `flux-system` | `TAILNET_DOMAIN`, `NODE_IP`, `NAS_IP`, `LAN_SUBNET`, `NAS_DATA_PATH` |
-
-### Step 3 — Bootstrap Flux
-
-Apply the Flux sync manifests and kustomizations:
+Then:
 
 ```bash
-kubectl apply -f ~/talos/kubernetes/flux/flux-system/gotk-sync.yaml
-kubectl apply -k ~/talos/kubernetes/flux/kustomizations
+cd ~/talos
+$EDITOR provision.toml            # fill in the <placeholder> values
+export OP_ACCOUNT=my.1password.com
+./provision up
 ```
 
-> **Forking?** `gotk-sync.yaml` contains a hardcoded Gitea SSH URL — it cannot use Flux variable substitution because the `GitRepository` source is what Flux reads first. Replace the `url:` field with your own Gitea SSH address before applying.
+`./provision up` runs preflight, checks the 1Password entries, regenerates the
+generated files, provisions the VM and Talos, writes `~/.kube/config` and
+`~/.talos/config`, seeds the two cluster secrets, hands off to Flux, and backs
+up Terraform state. Every step is idempotent, so re-run it after fixing
+whatever stopped it.
 
-Flux's `GitRepository` source points to `ssh://git@gitea-ssh.<tailnet>.ts.net` (the Tailscale address). CoreDNS has a rewrite rule that resolves this to the `gitea-ssh-tailscale` LoadBalancer service inside the cluster. On a fresh cluster the Tailscale Operator and Gitea must be running before Flux can sync — Flux will retry automatically once they come up.
-
-> **Bootstrap order**: Flux applies the infrastructure Kustomization first (Tailscale Operator, NFS CSI, CoreDNS patch), then apps. The Tailscale Operator will register the `gitea-ssh` proxy in the tailnet and Gitea will deploy. Flux retries every minute, so recovery is fully automatic — just wait a few minutes after bootstrap.
-
-Once Flux can sync, it reconciles all apps automatically. Most app data is on NFS and survives node wipes.
+> **Bootstrap ordering.** Flux sources its `GitRepository` from Gitea over SSH,
+> and Gitea runs on this cluster. On a cold cluster Flux cannot sync until the
+> Tailscale operator and Gitea are up. It retries every minute, so this
+> resolves itself — deploy Gitea with `./provision bootstrap gitea` if you want
+> to hurry it along.
 
 ### What survives a full node wipe
 
-| Storage | Apps | Survives wipe? |
+| Storage | Apps | Survives? |
 |---|---|---|
-| NFS (Unifi NAS) | Jellyfin, Immich, Sonarr, Radarr, Prowlarr, Bazarr, qBittorrent, Audiobookshelf, Actual Budget, Wallos, Homebox, AdventureLog, Gitea, Outline | ✅ Yes |
-| local-path (node disk) | Uptime Kuma (monitors), Prometheus metrics, Grafana dashboards | ❌ No |
+| NFS (Unifi NAS) | Jellyfin, Immich, Sonarr, Radarr, Prowlarr, Bazarr, qBittorrent, Audiobookshelf, Actual Budget, Wallos, Homebox, AdventureLog, Gitea, Outline | ✅ |
+| local-path (node disk) | Uptime Kuma monitors, Prometheus metrics, Grafana dashboards | ❌ |
 
 ### Post-recovery manual steps
 
-After Flux reconciles, the following need manual reconfiguration if the node was wiped:
-
-- **Outline** — data is on NFS, restores automatically ✅
-- **Uptime Kuma** — monitors need to be re-added in the UI
-- **Ntfy** — admin user is recreated automatically by init container ✅
-- **Servarr apps** — Sonarr/Radarr/Prowlarr/Bazarr config is on NFS, should restore automatically ✅
+- **Uptime Kuma** — monitors need re-adding in the UI
+- **Outline**, **Ntfy**, **Servarr** — restore automatically ✅
 
 ### Secrets management
 
