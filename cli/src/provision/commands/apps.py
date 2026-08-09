@@ -64,7 +64,7 @@ def _sync(quiet: bool = False) -> bool:
     for name in sorted(declared - present):
         fail(f"provision.toml declares '{name}' but kubernetes/apps/{name}/ does not exist")
 
-    changed, _ = kustomize.write(apps)
+    changed = kustomize.write(apps)
     if not quiet:
         path = settings.kustomization_path().relative_to(settings.repo_root())
         success(f"wrote {path}" if changed else f"{path} already up to date")
