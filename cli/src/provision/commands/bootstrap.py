@@ -8,6 +8,7 @@ Flux.
 from __future__ import annotations
 
 import os
+import time
 
 import click
 
@@ -185,12 +186,83 @@ def bootstrap_flux() -> None:
     )
 
 
+def _suspend_apps() -> bool:
+    """Hold the apps Kustomization. Returns False if it does not exist yet."""
+    ok, _ = try_run(["kubectl", "get", "kustomization", "apps", "-n", FLUX_NAMESPACE],
+                    capture=True, echo=False)
+    if not ok:
+        return False
+    run(["flux", "suspend", "kustomization", "apps"], check=False)
+    return True
+
+
+def _wait_kustomization(name: str, timeout: int) -> bool:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        _, ready = try_run(
+            ["kubectl", "get", "kustomization", name, "-n", FLUX_NAMESPACE,
+             "-o", "jsonpath={.status.conditions[?(@.type=='Ready')].status}"],
+            capture=True, echo=False,
+        )
+        if ready.strip() == "True":
+            return True
+        time.sleep(10)
+    return False
+
+
 @bootstrap.command("all")
+@click.option(
+    "--skip-nas-gate",
+    is_flag=True,
+    help="Deploy apps without first proving the NAS is writable.",
+)
 @click.pass_context
-def bootstrap_all(ctx: click.Context) -> None:
-    """Run secrets, then flux."""
+def bootstrap_all(ctx: click.Context, skip_nas_gate: bool) -> None:
+    """Seed secrets, bring up infrastructure, prove the NAS works, then apps.
+
+    Apps are held back until the cluster has demonstrably written to the NAS.
+    An app that starts without its NFS volume does not fail cleanly — it
+    initialises an empty database, or writes to a directory that a later mount
+    hides. Both are worse than the app simply not starting.
+    """
+    from .nas import nas_verify
+
     ctx.invoke(bootstrap_secrets)
+
+    if skip_nas_gate:
+        warn("NAS gate skipped — apps may start without their storage")
+        ctx.invoke(bootstrap_flux)
+        rule("Bootstrap complete")
+        return
+
+    rule("Gating apps on NAS availability")
+    suspended = _suspend_apps()
+
     ctx.invoke(bootstrap_flux)
 
+    # Suspend again: on a cold cluster the Kustomization only exists after the
+    # manifests above are applied, so the first attempt was a no-op.
+    if not suspended:
+        for _ in range(30):
+            if _suspend_apps():
+                suspended = True
+                break
+            time.sleep(2)
+
+    info("Waiting for infrastructure (CSI driver and storage classes)")
+    if not _wait_kustomization("infrastructure", timeout=600):
+        fail("infrastructure did not become Ready — apps left suspended")
+
+    try:
+        ctx.invoke(nas_verify, storage_class=None, timeout=180)
+    except SystemExit:
+        warn("apps remain SUSPENDED — nothing has been deployed against bad storage")
+        warn("fix NAS access, then: flux resume kustomization apps")
+        raise
+
+    if suspended:
+        info("NAS verified — releasing apps")
+        run(["flux", "resume", "kustomization", "apps"], check=False)
+
     rule("Bootstrap complete")
-    info("Watch reconciliation with: provision status")
+    info("Watch reconciliation with: ./provision status")
