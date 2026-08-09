@@ -94,6 +94,28 @@ terraform init && terraform apply
 Requires Terraform >= 1.5.0 or OpenTofu >= 1.6. Validated against Terraform
 1.5.7.
 
+## What is and is not proven
+
+`terraform validate` checks schema and references. It does not prove a VM
+boots. Be honest about which parts have actually been exercised:
+
+| | Status |
+|---|---|
+| Config validity, `fmt`, provider schemas | ✅ verified in CI |
+| Image Factory: `tailscale` + `qemu-guest-agent` exist for the pinned Talos version | ✅ verified against the live API |
+| Schematic POST returns a stable ID | ✅ `2f077b65…` |
+| ISO / disk image / **installer OCI manifest** resolve | ✅ HTTP 302 / 200 / 200 |
+| Proxmox VM creation, Talos config apply, bootstrap | ❌ **never run** |
+| `ExtensionServiceConfig` delivered via `config_patches` | ❌ unverified |
+
+The installer image mattering most: `machine.install.image` points at it, and a
+bad reference fails the install after the VM is already up.
+
+To close the remaining gap, provision a small throwaway node. The Proxmox host
+has headroom for it (VM 102 `rocky-rke2` is stopped, so ~4 GB is free) — no
+need to shrink the running cluster. Point `[nodes.*]` at a free `vm_id` and
+~2560 MB, run `./provision up`, confirm, then `./provision destroy`.
+
 ## Notes
 
 - **Do not point this at VM 100.** That is the running cluster. The example

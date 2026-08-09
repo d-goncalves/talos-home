@@ -30,30 +30,25 @@ HEADER = """\
 # required for the merge to parse but is ignored: `target` decides what is
 # patched.
 #
-# prune: disabled  — survives an app being disabled, so data is kept.
-# ssa: IfNotPresent — create on a fresh cluster, then never update.
+# prune: disabled — survives an app being disabled, so data is kept.
 #
-# The ssa policy is what keeps Flux from fighting over an immutable spec. A
-# bound PVC has volumeName set by kube-controller-manager, but git does not
-# specify it; kustomize-controller owned that field and kept trying to clear
-# it, which the API server rejects ("spec is immutable after creation"). One
-# such PVC failed the dry-run and took the whole apps Kustomization down with
-# it. IfNotPresent still creates PVCs on a rebuild, so recovery is unaffected.
+# Deliberately NOT ssa: IfNotPresent. That was the first fix for a bound PVC
+# whose volumeName kustomize-controller owned but git omitted, so every apply
+# tried to clear it and the API server rejected the whole Kustomization. But
+# IfNotPresent also blocks legitimate updates — notably resources.requests,
+# the one spec field that IS mutable on a bound claim — so it would have cost
+# the ability to grow a volume through git, across all PVCs, to work around a
+# problem that affected three of them.
 #
-# Namespaces keep normal reconcile behaviour — only their pruning is disabled.
+# The real cause was stale server-side-apply field ownership, fixed once at
+# the source by clearing managedFields on those three PVCs. Since git never
+# specifies volumeName, kustomize-controller does not re-acquire it.
 PRUNE_PROTECTED_KINDS = ("Namespace", "PersistentVolumeClaim", "PersistentVolume")
-
-# Kinds whose spec is immutable once bound, so Flux must not try to update them.
-CREATE_ONLY_KINDS = ("PersistentVolumeClaim", "PersistentVolume")
 
 
 def _prune_protection() -> str:
     blocks = ["patches:"]
     for kind in PRUNE_PROTECTED_KINDS:
-        annotations = ["          kustomize.toolkit.fluxcd.io/prune: disabled"]
-        if kind in CREATE_ONLY_KINDS:
-            annotations.append("          kustomize.toolkit.fluxcd.io/ssa: IfNotPresent")
-        joined = "\n".join(annotations)
         blocks.append(
             f"""  - target:
       kind: {kind}
@@ -63,7 +58,7 @@ def _prune_protection() -> str:
       metadata:
         name: prune-protection
         annotations:
-{joined}"""
+          kustomize.toolkit.fluxcd.io/prune: disabled"""
         )
     return "\n".join(blocks)
 

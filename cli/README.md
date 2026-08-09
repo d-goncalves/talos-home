@@ -117,6 +117,30 @@ Authentication is environment-only. Set `OP_SERVICE_ACCOUNT_TOKEN`, or
 `OP_ACCOUNT` for desktop biometrics; if neither is set the CLI passes through
 whichever account `op` is signed in to.
 
+## Tests
+
+```bash
+pip install -e "cli[dev]"
+pytest cli/tests -q
+```
+
+CI runs these plus `pyflakes`, a `terraform validate`, a `kustomize build` of
+every overlay, and two checks that have each caught a real outage:
+
+- **the generated kustomization matches `provision.toml`** — otherwise a
+  hand-edit survives until the next `sync` silently overwrites it
+- **nothing under `kubernetes/` is untracked** — a manifest referencing an
+  uncommitted file builds locally and breaks the whole Kustomization once Flux
+  pulls it
+
+CI runs on the GitHub mirror, which lags behind Gitea, and Flux reconciles from
+Gitea. So install the pre-push hook — it is the only check that runs *before*
+the cluster sees a change:
+
+```bash
+ln -sf ../../scripts/pre-push .git/hooks/pre-push
+```
+
 ## Terraform vs OpenTofu
 
 Either works. `tofu` wins if both are installed; override with

@@ -23,7 +23,7 @@ output "lan_subnet" {
 
 output "controlplane_ip" {
   description = "First controlplane IP, used as the talosctl endpoint"
-  value       = values(local.controlplane_nodes)[0].ip
+  value       = local.first_controlplane.ip
 }
 
 output "schematic_id" {

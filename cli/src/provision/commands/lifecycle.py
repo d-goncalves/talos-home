@@ -98,7 +98,12 @@ def check() -> None:
 
 @click.command("apply")
 @click.option("--auto-approve", is_flag=True, help="Skip the interactive approval.")
-def apply(auto_approve: bool) -> None:
+@click.option(
+    "--skip-backup",
+    is_flag=True,
+    help="Do not back state up to 1Password afterwards.",
+)
+def apply(auto_approve: bool, skip_backup: bool) -> None:
     """Provision or converge the cluster.
 
     On a cold provision the Talos config apply waits for the VM to reach
@@ -120,6 +125,19 @@ def apply(auto_approve: bool) -> None:
         if key in outs:
             click.echo(f"  {key:<18} {outs[key]}")
 
+    # A successful apply is exactly when state becomes irreplaceable: it now
+    # holds the only copy of the cluster PKI. Backing up only in `up` left the
+    # command most likely to change state as the one that did not preserve it.
+    if not skip_backup:
+        click.echo()
+        from .state import state_backup
+
+        ctx = click.get_current_context()
+        try:
+            ctx.invoke(state_backup)
+        except SystemExit:
+            warn("state backup failed — run `./provision state backup` manually")
+
 
 @click.command("up")
 @click.option("--auto-approve", is_flag=True, help="Skip every interactive approval.")
@@ -134,9 +152,9 @@ def up(ctx: click.Context, auto_approve: bool, skip_bootstrap: bool) -> None:
       2. secrets check  the credentials Terraform will read
       3. sync           regenerate tfvars and the apps kustomization
       4. apply          Proxmox VM, Talos, Tailscale, DHCP reservation
+                        (backs state up to 1Password on success)
       5. config write   ~/.talos/config and ~/.kube/config
       6. bootstrap all  cluster secrets, then Flux
-      7. state backup   terraform state to 1Password
 
     Every step is idempotent, so this is also the resume path after a failure
     partway through.
@@ -145,31 +163,28 @@ def up(ctx: click.Context, auto_approve: bool, skip_bootstrap: bool) -> None:
     from .config import config_write
     from .preflight import preflight
     from .secrets import secrets_check
-    from .state import state_backup
 
-    rule("1/7  Preflight")
+    rule("1/6  Preflight")
     ctx.invoke(preflight)
 
-    rule("2/7  Secrets")
+    rule("2/6  Secrets")
     ctx.invoke(secrets_check, check_all=False)
 
-    rule("3/7  Sync")
+    rule("3/6  Sync")
     ctx.invoke(sync)
 
-    rule("4/7  Provision")
-    ctx.invoke(apply, auto_approve=auto_approve)
+    # apply backs state up itself, so there is no separate step here.
+    rule("4/6  Provision")
+    ctx.invoke(apply, auto_approve=auto_approve, skip_backup=False)
 
-    rule("5/7  Local config")
+    rule("5/6  Local config")
     ctx.invoke(config_write, force=True)
 
     if skip_bootstrap:
         warn("skipping bootstrap as requested")
     else:
-        rule("6/7  Bootstrap")
+        rule("6/6  Bootstrap")
         ctx.invoke(bootstrap_all)
-
-    rule("7/7  State backup")
-    ctx.invoke(state_backup)
 
     rule("Cluster is up")
     info("Watch reconciliation with: provision status")

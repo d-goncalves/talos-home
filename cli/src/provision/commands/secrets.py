@@ -23,6 +23,7 @@ ESO_ITEMS = (
     ("Immich - talos-home", "Postgres password"),
     ("Outline - talos-home", "Secret key, utils secret, postgres, OIDC"),
     ("Grafana - talos-home", "Grafana admin password"),
+    ("Homebox - talos-home", "api_key_pepper — >=32 bytes, or homebox panics on boot"),
 )
 
 

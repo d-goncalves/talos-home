@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "Provisioning CLI for the talos-home cluster"
 # tomllib is stdlib from 3.11, so the CLI has exactly one dependency.
 requires-python = ">=3.11"
-dependencies = ["click>=8.1"]
+# Upper bound deliberate: this is a disaster-recovery tool that pip-installs on
+# first run, so an unpinned major release must not be able to break recovery.
+dependencies = ["click>=8.1,<9"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "PyYAML>=6.0", "pyflakes>=3.0"]
 
 [project.scripts]
 provision = "provision.cli:main"

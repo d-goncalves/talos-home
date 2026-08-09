@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#
+# Guard the generated files before they reach Gitea.
+#
+# CI runs on the GitHub mirror, which lags behind Gitea — and Flux reconciles
+# from Gitea. So the only check that runs *before* the cluster sees a change is
+# this one. Install it with:
+#
+#     ln -sf ../../scripts/pre-push .git/hooks/pre-push
+#
+# Skip on a one-off with `git push --no-verify`.
+
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+fail() { echo "pre-push: $1" >&2; exit 1; }
+
+# ── Generated files must match their source ──────────────────────────────────
+if [[ -x ./provision ]]; then
+  ./provision sync >/dev/null 2>&1 || fail "'./provision sync' failed"
+
+  if ! git diff --quiet -- kubernetes/apps/kustomization.yaml; then
+    git --no-pager diff --stat -- kubernetes/apps/kustomization.yaml >&2
+    fail "kustomization.yaml is out of date — run './provision sync' and commit"
+  fi
+fi
+
+# ── Nothing under kubernetes/ may be referenced but untracked ────────────────
+# A manifest listing a file nobody committed builds locally and breaks the
+# whole Kustomization once Flux pulls it.
+untracked="$(git ls-files --others --exclude-standard kubernetes/)"
+if [[ -n "$untracked" ]]; then
+  echo "$untracked" >&2
+  fail "untracked files under kubernetes/ — commit them or add to .gitignore"
+fi
+
+# ── The apps overlay must build ──────────────────────────────────────────────
+if command -v kubectl >/dev/null 2>&1; then
+  kubectl kustomize kubernetes/apps >/dev/null || fail "kubernetes/apps does not build"
+fi
+
+exit 0

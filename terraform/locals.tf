@@ -4,11 +4,19 @@ locals {
     if node.machine_type == "controlplane"
   }
 
-  # Single node: derive the endpoint from the one controlplane. Multi node:
-  # set var.cluster_endpoint to a VIP explicitly.
+  # Deterministic "first" controlplane. `values()` on a map is ordered by key,
+  # so this is stable — but naming it makes that explicit rather than relying
+  # on a property of the map that is easy to forget.
+  #
+  # With more than one controlplane this picks an arbitrary member, which is
+  # wrong for an HA endpoint: set cluster.endpoint to a VIP instead. A
+  # precondition on talos_machine_bootstrap enforces that rather than silently
+  # pointing every node at a single member.
+  first_controlplane = local.controlplane_nodes[sort(keys(local.controlplane_nodes))[0]]
+
   cluster_endpoint = coalesce(
     var.cluster_endpoint,
-    "https://${values(local.controlplane_nodes)[0].ip}:6443",
+    "https://${local.first_controlplane.ip}:6443",
   )
 
   # talosctl expects endpoints/nodes as plain IPs.

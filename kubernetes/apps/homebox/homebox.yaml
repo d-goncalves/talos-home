@@ -36,6 +36,15 @@ spec:
               value: Europe/Lisbon
             - name: HBOX_OPTIONS_ALLOW_REGISTRATION
               value: "false"
+            # Required since the image started enforcing a >=32 byte pepper.
+            # Without it the process panics on boot, which is what had homebox
+            # crash-looping ~12 times an hour and leaking a containerd-shim
+            # each time.
+            - name: HBOX_AUTH_API_KEY_PEPPER
+              valueFrom:
+                secretKeyRef:
+                  name: homebox-secret
+                  key: api_key_pepper
           volumeMounts:
             - name: data
               mountPath: /data

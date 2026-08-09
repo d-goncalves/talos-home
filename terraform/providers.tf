@@ -3,6 +3,15 @@
 # secret is committed.
 provider "onepassword" {}
 
+# NOTE: the provider blocks below read credentials from onepassword_item data
+# sources (via locals). Terraform allows this, but provider configuration that
+# depends on data sources is a known sharp edge: the data source must be
+# readable during plan, and `destroy` can fail if 1Password is unreachable
+# because the provider cannot be configured to tear anything down.
+#
+# If that ever bites, export the values as TF_VAR_* for the duration of the
+# run instead — the variables still exist for exactly that escape hatch.
+
 provider "proxmox" {
   endpoint  = var.proxmox_endpoint
   api_token = local.proxmox_api_token

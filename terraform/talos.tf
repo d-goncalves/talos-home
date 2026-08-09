@@ -49,10 +49,21 @@ resource "talos_machine_configuration_apply" "this" {
 
 resource "talos_machine_bootstrap" "this" {
   client_configuration = talos_machine_secrets.this.client_configuration
-  node                 = values(local.controlplane_nodes)[0].ip
-  endpoint             = values(local.controlplane_nodes)[0].ip
+  node                 = local.first_controlplane.ip
+  endpoint             = local.first_controlplane.ip
 
   depends_on = [talos_machine_configuration_apply.this]
+
+  lifecycle {
+    # With several controlplanes, deriving the endpoint from one of them points
+    # every node at a single member: lose it and the cluster is unreachable
+    # even though the others are healthy. Fail loudly instead of quietly
+    # building something that only looks highly available.
+    precondition {
+      condition     = length(local.controlplane_nodes) == 1 || var.cluster_endpoint != null
+      error_message = "More than one controlplane node requires cluster.endpoint to be set to a VIP in provision.toml."
+    }
+  }
 
   timeouts = {
     create = "10m"
@@ -61,8 +72,8 @@ resource "talos_machine_bootstrap" "this" {
 
 resource "talos_cluster_kubeconfig" "this" {
   client_configuration = talos_machine_secrets.this.client_configuration
-  node                 = values(local.controlplane_nodes)[0].ip
-  endpoint             = values(local.controlplane_nodes)[0].ip
+  node                 = local.first_controlplane.ip
+  endpoint             = local.first_controlplane.ip
 
   depends_on = [talos_machine_bootstrap.this]
 

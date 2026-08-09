@@ -1,0 +1,85 @@
+name: ci
+
+# Gitea mirrors to GitHub, so this runs on the mirror. It is a safety net for
+# the generated files, not a deploy gate — Flux reconciles from Gitea directly.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  cli:
+    name: CLI tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e "cli[dev]"
+      - name: pyflakes
+        run: python -m pyflakes cli/src/provision/
+      - name: pytest
+        run: python -m pytest cli/tests -q
+
+  generated-files:
+    name: Generated files are in sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e cli
+
+      # provision.toml is the source of truth for kubernetes/apps/kustomization.yaml.
+      # Without this check, a hand-edited kustomization survives until the next
+      # `provision sync` silently overwrites it — or worse, Flux applies a state
+      # nobody intended.
+      - name: no uncommitted drift after sync
+        run: |
+          python -m provision sync
+          if ! git diff --quiet -- kubernetes/apps/kustomization.yaml; then
+            echo "::error::kubernetes/apps/kustomization.yaml is out of date."
+            echo "Run './provision sync' and commit the result."
+            git --no-pager diff -- kubernetes/apps/kustomization.yaml
+            exit 1
+          fi
+
+  manifests:
+    name: Kustomize builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: kustomize build every overlay
+        run: |
+          fail=0
+          for dir in kubernetes/apps kubernetes/infrastructure kubernetes/flux/kustomizations; do
+            echo "==> $dir"
+            kubectl kustomize "$dir" > /dev/null || { echo "::error::$dir failed to build"; fail=1; }
+          done
+          exit $fail
+
+      # A manifest referencing a file nobody committed builds fine locally and
+      # breaks the whole Kustomization once pushed. This has happened.
+      - name: every referenced file is tracked
+        run: |
+          git ls-files --others --exclude-standard kubernetes/ > /tmp/untracked
+          if [ -s /tmp/untracked ]; then
+            echo "::error::untracked files under kubernetes/:"
+            cat /tmp/untracked
+            exit 1
+          fi
+
+  terraform:
+    name: Terraform validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.7"
+      - run: terraform -chdir=terraform fmt -check -recursive
+      - run: terraform -chdir=terraform init -backend=false -input=false
+      - run: terraform -chdir=terraform validate
