@@ -17,6 +17,14 @@ machine:
 %{ for ns in nameservers ~}
       - ${ns}
 %{ endfor ~}
+  kubelet:
+    nodeIP:
+      # Without this kubelet picks whichever address it finds first, and with
+      # the tailscale extension running that is the 100.64.0.0/10 tailnet
+      # address. The node then registers with an InternalIP that is not on the
+      # LAN, which breaks anything keyed on the real address.
+      validSubnets:
+        - ${lan_subnet}
   install:
     disk: ${install_disk}
     # Image Factory installer carrying the system extensions. System extensions

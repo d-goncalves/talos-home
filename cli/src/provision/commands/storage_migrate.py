@@ -460,6 +460,58 @@ def _execute(plan: dict, yes: bool) -> None:
     info("Verify the apps, then: ./provision storage migrate --finalize")
 
 
+def _apply_new_storage() -> bool:
+    """Recreate the StorageClasses and claims directly, without Flux.
+
+    Flux sources its GitRepository from Gitea, and Gitea is one of the apps
+    whose PVC this step deletes — so Flux cannot be the thing that puts the
+    storage back. Apply the storage objects straight from the repo instead, let
+    the apps come up, and let Flux agree with reality afterwards.
+
+    Only StorageClass, PersistentVolume and PersistentVolumeClaim are applied;
+    everything else in the overlay is left to Flux.
+    """
+    import yaml as _yaml
+
+    root = settings.repo_root()
+    ok, raw_vars = try_run(
+        ["kubectl", "get", "secret", "-n", "flux-system", "cluster-vars", "-o", "json"],
+        capture=True, echo=False,
+    )
+    substitutions = {}
+    if ok:
+        import base64
+        for key, value in (json.loads(raw_vars).get("data") or {}).items():
+            substitutions[key] = base64.b64decode(value).decode()
+
+    def render(path) -> str:
+        text = run(["kubectl", "kustomize", str(path)], capture=True, echo=False)
+        for key, value in substitutions.items():
+            text = text.replace("${" + key + "}", value)
+        return text
+
+    wanted = {"StorageClass", "PersistentVolume", "PersistentVolumeClaim"}
+    docs = []
+    for path in (root / "kubernetes" / "infrastructure" / "nfs-csi",
+                 root / "kubernetes" / "apps"):
+        for doc in _yaml.safe_load_all(render(path)):
+            if doc and doc.get("kind") in wanted:
+                docs.append(doc)
+
+    if not docs:
+        warn("nothing to apply")
+        return False
+
+    info(f"applying {len(docs)} storage objects directly")
+    manifest = "\n---\n".join(_yaml.safe_dump(d) for d in docs)
+    ok, err = try_run(["kubectl", "apply", "-f", "-"],
+                      input_text=manifest, capture=True, echo=False)
+    if not ok:
+        warn(f"apply failed: {err.strip()[:400]}")
+        return False
+    return True
+
+
 def _finalize(plan: dict, yes: bool) -> None:
     click.echo()
     warn("Apps have been writing to the OLD paths since --execute ran, so the")
@@ -512,7 +564,19 @@ def _finalize(plan: dict, yes: bool) -> None:
                  "--ignore-not-found"], check=False)
 
     success("old PVCs and StorageClasses removed")
-    info("Merge the branch and push; Flux recreates everything on the new paths.")
+
+    rule("Recreating storage on the deterministic paths")
+    if not _apply_new_storage():
+        fail("could not recreate storage — apps are still scaled down; "
+             "the old data is intact on the NAS (reclaimPolicy Retain)")
+
+    rule("Restoring apps")
+    for ns, kind, name, replicas in scaled:
+        run(["kubectl", "scale", kind, "-n", ns, name,
+             f"--replicas={replicas}"], check=False)
+
+    success("migration complete")
+    info("Verify the apps, then merge the branch so Flux agrees with reality.")
 
 
 storage.add_command(storage_migrate)

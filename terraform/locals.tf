@@ -44,6 +44,7 @@ locals {
         gateway         = var.gateway
         nameservers     = var.nameservers
         install_disk    = node.install_disk
+        lan_subnet      = var.lan_subnet
         installer_image = data.talos_image_factory_urls.this[name].urls.installer
       }),
       node.machine_type == "controlplane" ? local.controlplane_patch : "",
