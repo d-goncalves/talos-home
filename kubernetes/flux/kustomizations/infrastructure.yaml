@@ -10,6 +10,10 @@ spec:
   sourceRef:
     kind: GitRepository
     name: flux-system
+  # Every HelmRelease under infrastructure resolves its chart through one of
+  # those sources, so they have to be reconciled first.
+  dependsOn:
+    - name: repositories
   postBuild:
     substituteFrom:
       - kind: Secret

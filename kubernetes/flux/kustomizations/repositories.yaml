@@ -1,0 +1,22 @@
+# Chart sources (HelmRepository/GitRepository) reconciled by Flux.
+#
+# The bootstrap script still applies kubernetes/flux/ directly, because these
+# have to exist before Flux can resolve any HelmRelease. But without this
+# Kustomization that was the *only* thing applying them, so a source could
+# never be corrected by a git push -- changing one silently required a
+# bootstrap re-run. A wrong chart URL then survived every reconcile, which is
+# exactly how the local-path 404 stayed live on a running cluster.
+#
+# Bootstrap creates them once for the cold start; Flux owns them from then on.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: repositories
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./kubernetes/flux/repositories
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
