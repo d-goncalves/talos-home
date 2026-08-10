@@ -64,6 +64,50 @@ class App:
     enabled: bool
 
 
+@dataclass(frozen=True)
+class Sandbox:
+    """The [sandbox] table.
+
+    Deliberately not projected into tfvars: the sandbox is driven straight
+    through the Proxmox API, so none of this reaches Terraform.
+    """
+
+    vm_id: int
+    template_id: int
+    ip: str
+    memory: int
+    cpu_cores: int
+    disk_size: int
+    datastore_id: str
+    bridge: str
+    username: str
+    image_url: str
+    ssh_keys: str
+    gateway: str
+    subnet_prefix: int
+    nameservers: list[str]
+
+
+_SANDBOX_DEFAULTS = {
+    "vm_id": 120,
+    "template_id": 9000,
+    "memory": 2048,
+    "cpu_cores": 2,
+    "disk_size": 20,
+    "datastore_id": "local-lvm",
+    "bridge": "vmbr0",
+    "username": "lab",
+    "image_url": (
+        "https://cloud-images.ubuntu.com/noble/current/"
+        "noble-server-cloudimg-amd64.img"
+    ),
+    # "auto" takes every public key out of the ssh-agent, falling back to
+    # ~/.ssh/*.pub. Public keys are not secrets, and without one the sandbox
+    # has a user you cannot log in as.
+    "ssh_keys": "auto",
+}
+
+
 def config_path() -> Path:
     return repo_root() / CONFIG_NAME
 
@@ -109,6 +153,65 @@ def get_app(name: str) -> App:
         if app.name == name:
             return app
     fail(f"unknown app '{name}'. Known: {', '.join(a.name for a in apps())}")
+
+
+def sandbox() -> Sandbox:
+    """Read [sandbox], inheriting the LAN settings from [network].
+
+    Gateway and nameservers are not repeated in [sandbox]: the sandbox sits on
+    the same LAN as everything else, and two copies of the gateway is two
+    places to fix when it changes.
+    """
+    data = load()
+    table = data.get("sandbox")
+    if not isinstance(table, dict):
+        fail(
+            "provision.toml has no [sandbox] table. "
+            "Add one, or run the homelab commands instead."
+        )
+
+    unknown = set(table) - set(_SANDBOX_DEFAULTS) - {"ip"}
+    if unknown:
+        fail(f"provision.toml: [sandbox] has unknown keys: {', '.join(sorted(unknown))}")
+
+    network = data.get("network") or {}
+    merged = {**_SANDBOX_DEFAULTS, **table}
+
+    ip = merged.get("ip")
+    if not ip:
+        fail("provision.toml: [sandbox] ip is required")
+
+    for key in ("vm_id", "template_id", "memory", "cpu_cores", "disk_size"):
+        if not isinstance(merged[key], int):
+            fail(f"provision.toml: [sandbox] {key} must be an integer")
+
+    if merged["vm_id"] == merged["template_id"]:
+        fail("provision.toml: [sandbox] vm_id and template_id must differ")
+
+    # A sandbox that reuses a cluster node's ID or address would have the CLI
+    # cheerfully deleting the cluster.
+    for name, body in (data.get("nodes") or {}).items():
+        if body.get("vm_id") == merged["vm_id"]:
+            fail(f"provision.toml: [sandbox] vm_id {merged['vm_id']} collides with node '{name}'")
+        if body.get("ip") == ip:
+            fail(f"provision.toml: [sandbox] ip {ip} collides with node '{name}'")
+
+    return Sandbox(
+        vm_id=merged["vm_id"],
+        template_id=merged["template_id"],
+        ip=str(ip),
+        memory=merged["memory"],
+        cpu_cores=merged["cpu_cores"],
+        disk_size=merged["disk_size"],
+        datastore_id=str(merged["datastore_id"]),
+        bridge=str(merged["bridge"]),
+        username=str(merged["username"]),
+        image_url=str(merged["image_url"]),
+        ssh_keys=str(merged["ssh_keys"]),
+        gateway=str(network.get("gateway", "")),
+        subnet_prefix=int(network.get("subnet_prefix", 24)),
+        nameservers=list(network.get("nameservers") or []),
+    )
 
 
 def on_disk() -> set[str]:
@@ -160,7 +263,7 @@ def unfilled() -> list[str]:
             found.append(f"{path} = {value!r}")
 
     data = load()
-    for table in ("cluster", "proxmox", "network", "unifi", "nodes"):
+    for table in ("cluster", "proxmox", "network", "unifi", "nodes", "sandbox"):
         if table in data:
             walk(data[table], table)
     return found

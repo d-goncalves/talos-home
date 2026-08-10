@@ -120,3 +120,33 @@ watchyourlan   = true
 bentopdf       = true
 it-tools       = true
 librespeed     = true
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  SANDBOX
+#
+#  A throwaway Ubuntu VM for testing packages you do not trust. Deliberately
+#  not managed by Terraform: it is created and destroyed several times an hour,
+#  so there is nothing worth keeping state for — and sharing no state with the
+#  homelab means a mistake here can never plan a change against the cluster.
+#
+#  Budget: the host has 15.5 GiB and PVE itself takes ~1.9 GiB. With the
+#  cluster on 10 GiB this leaves room for one 2 GiB sandbox and ~3 GiB spare.
+#  Raising either number past that oversubscribes the host, and with ballooning
+#  off there is no give — the OOM killer takes the largest VM, which is Talos.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[sandbox]
+vm_id        = 120
+# Built once by `provision sandbox template`, then cloned per run.
+template_id  = 9000
+# Must sit inside the 192.168.1.20-29 range reserved for these machines.
+# .21 is the Talos node.
+ip           = "192.168.1.22"
+memory       = 2048
+cpu_cores    = 2
+disk_size    = 20
+datastore_id = "local-lvm"
+bridge       = "vmbr0"
+username     = "lab"
+# Ubuntu's cloud image. `current` tracks the latest point release of 24.04 LTS.
+image_url    = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
