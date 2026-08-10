@@ -301,6 +301,15 @@ Two things worth knowing:
 host. It is the one route in once the NIC is disconnected, so it is what you
 want after `offline`. Exit with Ctrl-O.
 
+The console logs in on its own — there is no password to type, and none exists.
+SSH uses your agent's public keys; the console autologins. Reaching that
+console at all requires root on the Proxmox host, and anyone with that can
+already do anything to the VM, so a password would be a credential to manage
+and rotate in exchange for no real boundary. This is delivered as a cloud-init
+snippet, which is the one thing the Proxmox API cannot upload, so `new` copies
+it over SSH. Without host SSH the sandbox still builds — it just falls back to
+key-only access with no console login.
+
 `sandbox reset` rolls back to a snapshot taken at first boot — seconds, versus
 a full re-clone, and it discards anything the guest wrote. It needs
 `VM.Snapshot` and `VM.Snapshot.Rollback` on the API token's role; without them

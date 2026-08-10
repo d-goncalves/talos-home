@@ -47,6 +47,50 @@ CLEAN_SNAPSHOT = "clean"
 PAYLOAD_SLOT = "scsi1"
 PAYLOAD_ISO = "sandbox-payload.iso"
 
+# Cloud-init user-data, uploaded as a Proxmox snippet.
+#
+# The sandbox authenticates over SSH with a key and has no password, which is
+# what you want over the network — but it left the serial console asking for a
+# password nobody has, and the console is the *only* way in once the NIC is
+# disconnected. So the console logs straight in.
+#
+# That is not the security hole it looks like: reaching this console at all
+# requires root on the Proxmox host, and anyone with that can already do
+# anything to the VM. A password here would be a credential to manage, leak and
+# rotate, in a repo that is public, in exchange for no real boundary.
+# Note this must also create the user and install the keys: `cicustom user=`
+# replaces the user-data Proxmox would otherwise generate, so ciuser and
+# sshkeys stop having any effect once it is set. Getting that wrong produces a
+# VM you can reach by neither SSH nor console.
+SNIPPET_NAME = "sandbox-user-data.yaml"
+USER_DATA = """\
+#cloud-config
+# Managed by ./provision sandbox — overwritten on the next `new`.
+# The hostname is set here because Proxmox normally supplies it in the
+# user-data this file replaces.
+hostname: sandbox
+users:
+  - name: {username}
+    groups: [adm, sudo]
+    shell: /bin/bash
+    sudo: 'ALL=(ALL) NOPASSWD:ALL'
+    # No password anywhere: SSH uses the keys below, and the console logs in
+    # on its own.
+    lock_passwd: true
+    ssh_authorized_keys:
+{keys}
+write_files:
+  - path: /etc/systemd/system/serial-getty@ttyS0.service.d/autologin.conf
+    permissions: '0644'
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=-/sbin/agetty --autologin {username} --noclear --keep-baud 115200,38400,9600 %I $TERM
+runcmd:
+  - [systemctl, daemon-reload]
+  - [systemctl, restart, 'serial-getty@ttyS0.service']
+"""
+
 
 def _cfg() -> tuple[Proxmox, settings.Sandbox]:
     return connect(), settings.sandbox()
@@ -55,6 +99,46 @@ def _cfg() -> tuple[Proxmox, settings.Sandbox]:
 def _require_vm(api: Proxmox, box: settings.Sandbox) -> None:
     if not api.exists(box.vm_id):
         fail(f"no sandbox VM {box.vm_id}. Run `provision sandbox new` first.")
+
+
+def _pve_ssh_target() -> tuple[str, str]:
+    pve = settings.load().get("proxmox") or {}
+    host = (pve.get("endpoint") or "").split("//")[-1].split(":")[0]
+    return pve.get("ssh_username", "root"), host
+
+
+def _upload_snippet(box: settings.Sandbox) -> str | None:
+    """Put the cloud-init user-data on the host, returning its volume id.
+
+    Snippets are the one thing the Proxmox API will not upload — its upload
+    endpoint only accepts iso, vztmpl and import — so this goes over SSH. If
+    that is not available the sandbox still works; it just gets no console
+    autologin, so say so rather than failing the whole command.
+    """
+    user, host = _pve_ssh_target()
+    if not host:
+        return None
+
+    keys = _ssh_key_list(box)
+    if not keys:
+        # Without keys the snippet would lock the account out of SSH entirely,
+        # and autologin alone is worse than what Proxmox generates by default.
+        return None
+
+    body = USER_DATA.format(
+        username=box.username,
+        keys="\n".join(f"      - {key}" for key in keys),
+    )
+    result = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", f"{user}@{host}",
+         f"mkdir -p /var/lib/vz/snippets && cat > /var/lib/vz/snippets/{SNIPPET_NAME}"],
+        input=body, text=True, capture_output=True,
+    )
+    if result.returncode != 0:
+        warn(f"could not upload cloud-init snippet over SSH to {host}")
+        warn("the console will ask for a password nobody has — use SSH, or fix host access")
+        return None
+    return f"local:snippets/{SNIPPET_NAME}"
 
 
 def _import_filename(url: str) -> str:
@@ -71,17 +155,18 @@ def _import_filename(url: str) -> str:
     return name
 
 
-def _ssh_keys(box: settings.Sandbox) -> str | None:
+def _ssh_key_list(box: settings.Sandbox) -> list[str]:
     """Public keys to authorise for the sandbox user.
 
-    Without one, cloud-init creates the account with no password and no key,
-    and the only way in is the console — which is not much of a sandbox. These
-    are public keys, so collecting them from the agent leaks nothing.
+    Without one the account has no password and no key, and the only way in is
+    the console. These are public keys, so taking them from the agent leaks
+    nothing.
     """
     value = (box.ssh_keys or "").strip()
     if value and value != "auto":
         candidate = Path(value).expanduser()
-        return candidate.read_text() if candidate.is_file() else value
+        text = candidate.read_text() if candidate.is_file() else value
+        return [line for line in text.splitlines() if line.strip()]
 
     result = subprocess.run(["ssh-add", "-L"], capture_output=True, text=True)
     keys = [
@@ -92,12 +177,23 @@ def _ssh_keys(box: settings.Sandbox) -> str | None:
         keys = [
             p.read_text().strip()
             for p in sorted(Path.home().joinpath(".ssh").glob("*.pub"))
+            if p.read_text().strip()
         ]
 
     if not keys:
         warn("no SSH public key found — the sandbox will only be reachable by console")
-        return None
+    return keys
 
+
+def _ssh_keys(box: settings.Sandbox) -> str | None:
+    """The same keys, encoded for the API's `sshkeys` parameter.
+
+    Only used when there is no cloud-init snippet: setting `cicustom user=`
+    makes Proxmox ignore this entirely.
+    """
+    keys = _ssh_key_list(box)
+    if not keys:
+        return None
     # PVE wants this parameter percent-encoded in its own right, on top of the
     # form encoding the request already applies — pass it raw and the API
     # rejects it with "invalid urlencoded string".
@@ -222,12 +318,14 @@ def sandbox_new(offline: bool, replace: bool) -> None:
     )
 
     nameservers = " ".join(box.nameservers) if box.nameservers else None
+    snippet = _upload_snippet(box)
     api.put(
         f"/nodes/{api.node}/qemu/{box.vm_id}/config",
         memory=box.memory,
         cores=box.cpu_cores,
         ciuser=box.username,
         sshkeys=_ssh_keys(box),
+        cicustom=f"user={snippet}" if snippet else None,
         ipconfig0=f"ip={box.ip}/{box.subnet_prefix},gw={box.gateway}",
         nameserver=nameservers,
         net0=_net_string(box, disconnected=offline),

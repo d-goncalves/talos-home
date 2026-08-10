@@ -140,6 +140,35 @@ def test_import_filename_rewrites_img_to_qcow2():
     assert _import_filename("https://x/y/thing.qcow2") == "thing.qcow2"
 
 
+def test_user_data_carries_the_user_and_keys():
+    """`cicustom user=` replaces Proxmox's generated user-data.
+
+    So the snippet has to create the account and install the keys itself. If it
+    ever stops doing that, the sandbox becomes unreachable by SSH *and* by
+    console, which is a bad way to find out.
+    """
+    yaml = pytest.importorskip("yaml")
+    from provision.commands.sandbox import USER_DATA
+
+    body = USER_DATA.format(
+        username="lab",
+        keys="\n".join(f"      - {k}" for k in ["ssh-ed25519 AAAAkey1", "ssh-ed25519 AAAAkey2"]),
+    )
+    parsed = yaml.safe_load(body)
+
+    user = parsed["users"][0]
+    assert user["name"] == "lab"
+    assert user["ssh_authorized_keys"] == ["ssh-ed25519 AAAAkey1", "ssh-ed25519 AAAAkey2"]
+    assert user["lock_passwd"] is True
+    assert "NOPASSWD" in user["sudo"]
+    # Proxmox supplies the hostname in the user-data this file replaces.
+    assert parsed["hostname"] == "sandbox"
+    # The console has to log in on its own: there is no password to type.
+    autologin = parsed["write_files"][0]
+    assert "serial-getty@ttyS0" in autologin["path"]
+    assert "--autologin lab" in autologin["content"]
+
+
 def test_net_string_marks_the_link_down():
     from provision.commands.sandbox import _net_string
 
