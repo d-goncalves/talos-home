@@ -348,6 +348,11 @@ def _copy_all(plan: dict) -> bool:
         script = (
             f'              set -e\n'
             f'              test -d "/share/{r["from"]}"\n'
+            # Remove the destination first. cp -a merges into whatever a
+            # previous run left behind, so deleted files linger and the copy is
+            # not a mirror — gitea came out with 3 more entries than its source.
+            # The source is never touched, so this is safe to redo.
+            f'              rm -rf "/share/{r["to"]}"\n'
             f'              mkdir -p "/share/{r["to"]}"\n'
             f'              cp -a "/share/{r["from"]}/." "/share/{r["to"]}/"\n'
             f'              find "/share/{r["to"]}" -type d -exec chmod 2770 {{}} + 2>/dev/null || true\n'
@@ -367,6 +372,7 @@ def _copy_all(plan: dict) -> bool:
     for i, c in enumerate(plan["copies"]):
         script = (
             f'              set -e\n'
+            f'              rm -rf "/share/{c["to"]}"\n'
             f'              mkdir -p "/share/{c["to"]}"\n'
             f'              cp -a /src/. "/share/{c["to"]}/"\n'
             f'              find "/share/{c["to"]}" -type d -exec chmod 2770 {{}} + 2>/dev/null || true\n'
