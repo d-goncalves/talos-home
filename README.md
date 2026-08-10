@@ -273,7 +273,8 @@ machine you care about.
 ./provision sandbox new               # clone and boot, ~40s
 ./provision sandbox payload ./stuff   # attach a directory as a read-only CD
 ./provision sandbox offline           # unplug the virtual cable
-./provision sandbox console           # the only way in once offline
+./provision sandbox console --serial  # the only way in once offline
+./provision sandbox reset             # back to the first-boot snapshot
 ./provision sandbox destroy
 ```
 
@@ -296,8 +297,13 @@ Two things worth knowing:
   does not restore it when the carrier returns. Use `online --reboot`, or run
   `sudo netplan apply` on the console.
 
-`sandbox reset` rolls back to a snapshot taken at first boot, which needs
-`VM.Snapshot` and `VM.Snapshot.Rollback` on the API token. Without them
+`console --serial` attaches to the VM's serial console over SSH to the Proxmox
+host. It is the one route in once the NIC is disconnected, so it is what you
+want after `offline`. Exit with Ctrl-O.
+
+`sandbox reset` rolls back to a snapshot taken at first boot — seconds, versus
+a full re-clone, and it discards anything the guest wrote. It needs
+`VM.Snapshot` and `VM.Snapshot.Rollback` on the API token's role; without them
 everything else still works and `new` warns once.
 
 ## Recovery

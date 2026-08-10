@@ -81,7 +81,7 @@ can plan a change against the cluster.
 | `new` | Clone and boot; `--offline` starts with the NIC down |
 | `payload DIR` | Attach a directory as a read-only CD, hotplugged |
 | `offline` `online` | Disconnect / reconnect the NIC (`online --reboot`) |
-| `console` | How to reach the serial console |
+| `console` | How to reach the console; `--serial` attaches to it |
 | `reset` | Roll back to the first-boot snapshot |
 | `destroy` | Stop and delete |
 | `status` | Exists, running, connected, payload attached |

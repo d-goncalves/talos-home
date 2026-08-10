@@ -22,6 +22,7 @@ Use `new --offline` plus `payload` when that matters.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import tempfile
@@ -459,12 +460,14 @@ def sandbox_status() -> None:
 
 
 @sandbox.command("console")
-def sandbox_console() -> None:
-    """Explain how to reach the serial console.
+@click.option("--serial", is_flag=True, help="Attach to the serial console now.")
+def sandbox_console(serial: bool) -> None:
+    """Show how to reach the console, or attach to it with --serial.
 
-    Proxmox's serial console needs a shell on the host, which this CLI
-    deliberately does not have — everything else here goes over the API. So
-    this prints the one command to run rather than pretending otherwise.
+    The serial console is the one way in once the NIC is disconnected, so it is
+    what you want after `sandbox offline`. It needs a shell on the Proxmox host
+    — everything else in this group goes over the API — which is why attaching
+    is opt-in rather than the default.
     """
     api, box = _cfg()
     _require_vm(api, box)
@@ -472,8 +475,25 @@ def sandbox_console() -> None:
     host = (pve.get("endpoint") or "").split("//")[-1].split(":")[0]
     user = pve.get("ssh_username", "root")
 
+    if serial:
+        if api.status(box.vm_id) != "running":
+            fail(f"sandbox {box.vm_id} is not running — start it first")
+        if not host:
+            fail("provision.toml: [proxmox] endpoint is required to reach the console")
+
+        info(f"attaching to the serial console of VM {box.vm_id} — exit with Ctrl-O")
+        argv = ["ssh", "-t", f"{user}@{host}", f"qm terminal {box.vm_id}"]
+        # execvp rather than run(): a console needs the real terminal, and
+        # handing the process over avoids a wrapper sitting between the user
+        # and the tty swallowing control characters.
+        try:
+            os.execvp("ssh", argv)
+        except OSError as exc:
+            fail(f"could not start ssh: {exc}")
+
     rule("Console")
     click.echo("  Serial console (works with the network disconnected):")
+    click.echo("    ./provision sandbox console --serial")
     click.echo(f"    ssh {user}@{host} -t 'qm terminal {box.vm_id}'")
     click.echo("    (exit with Ctrl-O)")
     click.echo()
