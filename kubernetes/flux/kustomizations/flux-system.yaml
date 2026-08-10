@@ -1,0 +1,28 @@
+# Flux managing its own configuration.
+#
+# Everything under kubernetes/flux -- the controllers, the GitRepository that
+# points at Gitea, the chart sources and these Kustomizations themselves -- was
+# only ever applied by `provision bootstrap`. Nothing reconciled it afterwards,
+# so a change there took effect solely on the next bootstrap run and drift on a
+# live cluster was invisible. That is how a chart source with a 404 URL and a
+# read-only hostPath both survived on a running cluster.
+#
+# Bootstrap still applies these directly for the cold start, because Flux needs
+# its controllers and a source before it can reconcile anything at all. This
+# takes over once that has happened.
+#
+# Note this owns kubernetes/flux/repositories too, so there is deliberately no
+# separate Kustomization for it: two Kustomizations managing one object fight
+# over the inventory and prune each other's resources.
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 10m
+  path: ./kubernetes/flux
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
