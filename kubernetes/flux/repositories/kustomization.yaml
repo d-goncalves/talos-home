@@ -5,3 +5,4 @@ resources:
   - immich.yaml
   - prometheus-community.yaml
   - grafana.yaml
+  - csi-driver-nfs.yaml

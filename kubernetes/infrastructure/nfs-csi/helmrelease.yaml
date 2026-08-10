@@ -1,0 +1,36 @@
+# The CSI driver itself. Until now only the StorageClasses were in git and the
+# driver was installed by hand with helm, so a cluster rebuilt from this repo
+# came up with storage classes and nothing to serve them — every NFS-backed PVC
+# would sit Pending forever.
+#
+# Version pinned to what the cluster already runs (chart 4.13.2), so adopting
+# the existing release is a no-op rather than an upgrade.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: csi-driver-nfs
+  namespace: kube-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: csi-driver-nfs
+      version: "4.13.2"
+      sourceRef:
+        kind: HelmRepository
+        name: csi-driver-nfs
+        namespace: flux-system
+  install:
+    # Take over the release helm already created rather than failing on it.
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  upgrade:
+    crds: CreateReplace
+    remediation:
+      retries: 3
+  values:
+    # Talos keeps kubelet state here. The chart's default differs on some
+    # distributions, and a wrong path makes every mount fail with the volume
+    # never appearing in the pod.
+    kubeletDir: /var/lib/kubelet
