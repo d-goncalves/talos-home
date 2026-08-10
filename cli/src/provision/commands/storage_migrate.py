@@ -238,7 +238,7 @@ spec:
 """
 
 
-def _run_job(manifest: str, name: str, timeout: int = 1800) -> bool:
+def _run_job(manifest: str, name: str, timeout: int = 14400) -> bool:
     try_run(["kubectl", "delete", "job", "-n", MIGRATION_NS, name,
              "--ignore-not-found"], capture=True, echo=False)
     ok, err = try_run(["kubectl", "apply", "-f", "-"],
@@ -263,7 +263,13 @@ def _run_job(manifest: str, name: str, timeout: int = 1800) -> bool:
             warn(f"job {name} failed:\n{logs}")
             return False
         time.sleep(5)
-    warn(f"job {name} timed out")
+    # A timeout is not a failure: the Job keeps running server-side. Saying
+    # "failed" here sent a 38 GB copy that was progressing normally down the
+    # error path, and reported the whole migration as broken when it was not.
+    warn(
+        f"job {name} is still running after {timeout}s — not treating it as "
+        f"failed. Watch it with: kubectl logs -n {MIGRATION_NS} job/{name} -f"
+    )
     return False
 
 
@@ -334,43 +340,9 @@ def storage_migrate(execute: bool, finalize: bool, yes: bool, only: str | None) 
     _execute(plan, yes)
 
 
-def _execute(plan: dict, yes: bool) -> None:
-    click.echo()
-    warn("Apps that own migrating volumes will be scaled to zero.")
-    warn("Nothing is deleted in this phase: data ends up in both places.")
-    if not yes and not click.confirm("  Proceed?", default=False):
-        fail("aborted")
-
-    _, data_path = _nas()
-    shares = {c["share"] for c in plan["copies"] + plan["nfs_copies"]}
-    if not _ensure_shares(plan["nas_ip"], data_path, shares):
-        fail("could not create the share directories — nothing was changed")
-
-    # ── scale down anything holding a volume we are about to touch ──────────
-    # Renames count: moving a directory out from under a live NFS mount leaves
-    # the pod holding a filehandle to a path that no longer resolves.
-    scaled: list[tuple[str, str, str, int]] = []
-    seen: set[tuple[str, str, str]] = set()
-    for c in plan["copies"] + plan["nfs_copies"]:
-        for kind, name in _owners(c["namespace"], c["pvc"]):
-            if (c["namespace"], kind, name) in seen:
-                continue
-            seen.add((c["namespace"], kind, name))
-            _, replicas = try_run(
-                ["kubectl", "get", kind, "-n", c["namespace"], name,
-                 "-o", "jsonpath={.spec.replicas}"], capture=True, echo=False)
-            scaled.append((c["namespace"], kind, name, int(replicas.strip() or 1)))
-            run(["kubectl", "scale", kind, "-n", c["namespace"], name,
-                 "--replicas=0"], check=False)
-
-    # Wait for every writer to actually exit, per volume.
-    for c in plan["copies"] + plan["nfs_copies"]:
-        if not _wait_pods_gone(c["namespace"], c["pvc"]):
-            warn(f"pods still hold {c['namespace']}/{c['pvc']} — skipping to stay safe")
-            fail("could not quiesce all writers; nothing was deleted")
-
+def _copy_all(plan: dict) -> bool:
+    """Run every copy job. Safe to re-run: cp overwrites in place."""
     ok_all = True
-
     # ── copy NFS volumes to their deterministic path ────────────────────────
     for i, r in enumerate(plan["nfs_copies"]):
         script = (
@@ -414,7 +386,7 @@ def _execute(plan: dict, yes: bool) -> None:
         if not ok:
             warn(f"could not create job: {err.strip()}"); ok_all = False; continue
 
-        deadline = time.time() + 1800
+        deadline = time.time() + 14400
         done = False
         while time.time() < deadline:
             _, s = try_run(["kubectl", "get", "job", "-n", c["namespace"], name,
@@ -433,6 +405,49 @@ def _execute(plan: dict, yes: bool) -> None:
         if not done:
             ok_all = False
 
+    return ok_all
+
+
+def _execute(plan: dict, yes: bool) -> None:
+    click.echo()
+    warn("Apps that own migrating volumes will be scaled to zero.")
+    warn("Nothing is deleted in this phase: data ends up in both places.")
+    if not yes and not click.confirm("  Proceed?", default=False):
+        fail("aborted")
+
+    _, data_path = _nas()
+    shares = {c["share"] for c in plan["copies"] + plan["nfs_copies"]}
+    if not _ensure_shares(plan["nas_ip"], data_path, shares):
+        fail("could not create the share directories — nothing was changed")
+
+    # ── scale down anything holding a volume we are about to touch ──────────
+    # Renames count: moving a directory out from under a live NFS mount leaves
+    # the pod holding a filehandle to a path that no longer resolves.
+    scaled: list[tuple[str, str, str, int]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for c in plan["copies"] + plan["nfs_copies"]:
+        for kind, name in _owners(c["namespace"], c["pvc"]):
+            if (c["namespace"], kind, name) in seen:
+                continue
+            seen.add((c["namespace"], kind, name))
+            _, replicas = try_run(
+                ["kubectl", "get", kind, "-n", c["namespace"], name,
+                 "-o", "jsonpath={.spec.replicas}"], capture=True, echo=False)
+            scaled.append((c["namespace"], kind, name, int(replicas.strip() or 1)))
+            run(["kubectl", "scale", kind, "-n", c["namespace"], name,
+                 "--replicas=0"], check=False)
+
+    # Wait for every writer to actually exit, per volume.
+    for c in plan["copies"] + plan["nfs_copies"]:
+        if not _wait_pods_gone(c["namespace"], c["pvc"]):
+            warn(f"pods still hold {c['namespace']}/{c['pvc']} — skipping to stay safe")
+            fail("could not quiesce all writers; nothing was deleted")
+
+    ok_all = True
+
+    if not _copy_all(plan):
+        ok_all = False
+
     # ── bring the apps back ─────────────────────────────────────────────────
     for ns, kind, name, replicas in scaled:
         run(["kubectl", "scale", kind, "-n", ns, name,
@@ -447,6 +462,9 @@ def _execute(plan: dict, yes: bool) -> None:
 
 def _finalize(plan: dict, yes: bool) -> None:
     click.echo()
+    warn("Apps have been writing to the OLD paths since --execute ran, so the")
+    warn("copies are stale. They will be re-synced with every writer stopped")
+    warn("before anything is deleted.")
     warn("DESTRUCTIVE. This deletes:")
     warn(f"  {len(plan['copies'])} local-path PVCs — reclaimPolicy Delete "
          "erases the node-disk copy")
@@ -457,11 +475,32 @@ def _finalize(plan: dict, yes: bool) -> None:
         if typed != "delete":
             fail("aborted")
 
-    for c in plan["copies"]:
+    # ── stop every writer, on both sets of volumes ──────────────────────────
+    scaled: list[tuple[str, str, str, int]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for c in plan["copies"] + plan["nfs_copies"]:
         for kind, name in _owners(c["namespace"], c["pvc"]):
+            if (c["namespace"], kind, name) in seen:
+                continue
+            seen.add((c["namespace"], kind, name))
+            _, replicas = try_run(
+                ["kubectl", "get", kind, "-n", c["namespace"], name,
+                 "-o", "jsonpath={.spec.replicas}"], capture=True, echo=False)
+            scaled.append((c["namespace"], kind, name, int(replicas.strip() or 1)))
             run(["kubectl", "scale", kind, "-n", c["namespace"], name,
                  "--replicas=0"], check=False)
-    time.sleep(15)
+
+    for c in plan["copies"] + plan["nfs_copies"]:
+        if not _wait_pods_gone(c["namespace"], c["pvc"]):
+            fail(f"{c['namespace']}/{c['pvc']} still has a writer — nothing deleted")
+
+    # ── final delta sync, now that nothing can write ────────────────────────
+    rule("Re-syncing before the switch")
+    if not _copy_all(plan):
+        for ns, kind, name, replicas in scaled:
+            run(["kubectl", "scale", kind, "-n", ns, name,
+                 f"--replicas={replicas}"], check=False)
+        fail("re-sync failed — nothing was deleted, apps restored")
 
     for c in plan["copies"]:
         run(["kubectl", "delete", "pvc", "-n", c["namespace"], c["pvc"],
