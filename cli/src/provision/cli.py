@@ -1,9 +1,14 @@
-"""provision — provisioning CLI for the talos-home cluster.
+"""provision — provisioning CLI for this repo.
 
-Deliberately a thin dispatcher over terraform, talosctl, kubectl, flux and op.
-The infrastructure logic lives in terraform/; this exists to sequence it and to
-handle the parts terraform cannot own (secret seeding, Flux handoff, state
-backup).
+Two stacks live here, and they are deliberately kept apart:
+
+    provision homelab ...   the Talos cluster, via Terraform + Flux
+    provision sandbox ...   a throwaway VM, via the Proxmox API
+
+They share the plumbing that is genuinely common — config loading, 1Password,
+the console helpers, the subprocess wrapper — and nothing else. In particular
+the sandbox has no Terraform state, so no sandbox command can ever plan a
+change against the cluster.
 
 provision.toml at the repo root is the single source of truth for everything
 non-secret. Secrets live in 1Password and are read directly by Terraform and by
@@ -19,59 +24,82 @@ import click
 from .commands.apps import apps
 from .commands.bootstrap import bootstrap
 from .commands.config import config
-from .commands.nas import nas
-from .commands.storage_migrate import storage
 from .commands.lifecycle import apply, check, destroy, init, output, plan, sync, up
+from .commands.nas import nas
 from .commands.preflight import preflight
+from .commands.sandbox import sandbox
 from .commands.secrets import secrets
 from .commands.state import state
-from .commands.status import health, status
+from .commands.status import status
+from .commands.storage_migrate import storage
 from .console import error
+from .proxmox import ProxmoxError
 from .shell import CommandError
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(package_name="provision")
 def cli() -> None:
-    """Provision and manage the talos-home cluster.
+    """Provision and manage this homelab.
 
     \b
-    A machine from scratch:
-      ./provision up
+    The cluster:
+      ./provision homelab up          a machine from scratch, end to end
+      ./provision homelab check       anything pending?
+      ./provision homelab apps disable adventurelog
 
     \b
-    Anything pending?
-      ./provision check
-
-    \b
-    Free up resources on a small node:
-      ./provision apps disable adventurelog
+    A throwaway VM for untrusted packages:
+      ./provision sandbox new
+      ./provision sandbox offline
+      ./provision sandbox destroy
     """
 
 
-# Lifecycle, flattened to the top level.
-cli.add_command(up)
-cli.add_command(check)
-cli.add_command(sync)
-cli.add_command(plan)
-cli.add_command(apply)
-cli.add_command(destroy)
-cli.add_command(init)
-cli.add_command(output)
-cli.add_command(preflight)
+@click.group("homelab")
+def homelab() -> None:
+    """The Talos cluster: Terraform, Flux and the apps it runs.
+
+    \b
+    From scratch:
+      ./provision homelab up
+
+    \b
+    Anything pending?
+      ./provision homelab check
+
+    \b
+    Free up resources on a small node:
+      ./provision homelab apps disable adventurelog
+    """
+
+
+# Lifecycle.
+homelab.add_command(up)
+homelab.add_command(check)
+homelab.add_command(sync)
+homelab.add_command(plan)
+homelab.add_command(apply)
+homelab.add_command(destroy)
+homelab.add_command(preflight)
+homelab.add_command(output)
+homelab.add_command(init)
 
 # Groups.
-cli.add_command(apps)
-cli.add_command(secrets)
-cli.add_command(nas)
-cli.add_command(storage)
-cli.add_command(config)
-cli.add_command(bootstrap)
-cli.add_command(state)
+homelab.add_command(apps)
+homelab.add_command(secrets)
+homelab.add_command(nas)
+homelab.add_command(storage)
+homelab.add_command(config)
+homelab.add_command(bootstrap)
+homelab.add_command(state)
 
-# Read-only.
-cli.add_command(status)
-cli.add_command(health)
+# Read-only. `health` folded into `status --deep`: two commands that both
+# answered "is the cluster ok?" was one more than anybody needed.
+homelab.add_command(status)
+
+cli.add_command(homelab)
+cli.add_command(sandbox)
 
 
 def main() -> None:
@@ -85,6 +113,11 @@ def main() -> None:
         # the message the user actually needs.
         error(f"{exc.argv[0]} exited {exc.returncode}")
         raise SystemExit(exc.returncode)
+    except ProxmoxError as exc:
+        # Same reasoning: the API already said what was wrong, and a traceback
+        # through urllib buries it.
+        error(str(exc))
+        raise SystemExit(1)
     except KeyboardInterrupt:
         error("interrupted")
         raise SystemExit(130)

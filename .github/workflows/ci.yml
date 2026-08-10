@@ -35,14 +35,14 @@ jobs:
 
       # provision.toml is the source of truth for kubernetes/apps/kustomization.yaml.
       # Without this check, a hand-edited kustomization survives until the next
-      # `provision sync` silently overwrites it — or worse, Flux applies a state
+      # `provision homelab sync` silently overwrites it — or worse, Flux applies a state
       # nobody intended.
       - name: no uncommitted drift after sync
         run: |
-          python -m provision sync
+          python -m provision homelab sync
           if ! git diff --quiet -- kubernetes/apps/kustomization.yaml; then
             echo "::error::kubernetes/apps/kustomization.yaml is out of date."
-            echo "Run './provision sync' and commit the result."
+            echo "Run './provision homelab sync' and commit the result."
             git --no-pager diff -- kubernetes/apps/kustomization.yaml
             exit 1
           fi
@@ -55,7 +55,7 @@ jobs:
       - name: storage audit
         run: |
           pip install -e cli
-          python -m provision apps storage
+          python -m provision homelab apps storage
 
       - name: kustomize build every overlay
         run: |

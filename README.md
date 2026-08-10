@@ -180,7 +180,7 @@ sequenceDiagram
 
 ```
 provision          # the CLI entrypoint — ./provision --help
-provision.toml     # ALL configuration — cluster, network, nodes, which apps run
+provision.toml     # ALL configuration — cluster, network, nodes, apps, sandbox
 terraform/         # provisions the Proxmox VM, Talos, Tailscale, UniFi reservation
   templates/       # Talos config patches, rendered from provision.toml
   secrets.tf       # reads credentials from 1Password at plan time
@@ -197,14 +197,30 @@ docs/
   architecture.png # rendered diagram
 ```
 
+## Two stacks
+
+`./provision` manages two things that share a Proxmox host and nothing else:
+
+| | `provision homelab` | `provision sandbox` |
+|---|---|---|
+| what | the Talos cluster and its apps | a throwaway Ubuntu VM |
+| driven by | Terraform + Flux | the Proxmox API, directly |
+| state | `terraform.tfstate`, backed up to 1Password | none |
+| lifetime | months | minutes |
+
+The sandbox deliberately has no Terraform state. It is created and destroyed
+several times an hour, so there is nothing worth tracking — and sharing no
+state with the cluster means a sandbox mistake cannot plan a change against the
+homelab.
+
 ## Provisioning
 
 Terraform builds the node; Flux fills it. See [terraform/README.md](terraform/README.md)
 and [cli/README.md](cli/README.md).
 
 ```bash
-./provision up      # a machine from scratch, end to end
-./provision check   # is anything pending?
+./provision homelab up      # a machine from scratch, end to end
+./provision homelab check   # is anything pending?
 ```
 
 `./provision` at the repo root is the only entrypoint. It creates a `.venv`
@@ -222,30 +238,67 @@ and `kubernetes/apps/kustomization.yaml` are generated from it.
 **No credential appears anywhere in this repo.** Terraform reads them from
 1Password itself via the `onepassword` provider; ESO does the same in-cluster.
 Authenticate with `OP_SERVICE_ACCOUNT_TOKEN` or `OP_ACCOUNT`, then
-`provision secrets check`.
+`provision homelab secrets check`.
 
 > Terraform state still contains the cluster CA private key, the bootstrap
 > tokens and the secretbox encryption key — `talos_machine_secrets` generates
 > them, so they cannot come from 1Password. State is gitignored; back it up
-> with `provision state backup` after every apply.
+> with `provision homelab state backup` after every apply.
 
 ## Turning apps on and off
 
 [provision.toml](provision.toml) decides which apps Flux deploys.
 
 ```bash
-./provision apps protect              # once, before the first disable
-./provision apps disable adventurelog
+./provision homelab apps protect              # once, before the first disable
+./provision homelab apps disable adventurelog
 git commit -am "disable adventurelog" && git push
 ```
 
 Flux prunes the workloads and the memory comes back. Namespaces, PVCs and PVs
-are annotated prune-exempt, so data survives and `provision apps enable` reattaches
+are annotated prune-exempt, so data survives and `provision homelab apps enable` reattaches
 the same volumes.
 
 > Flux reads that annotation from the object **in the cluster**, not from git,
-> so it has to be applied before an app leaves the source. `provision apps disable`
+> so it has to be applied before an app leaves the source. `provision homelab apps disable`
 > refuses to run until it can verify this.
+
+## The sandbox
+
+A disposable Ubuntu VM for testing packages you would rather not run on a
+machine you care about.
+
+```bash
+./provision sandbox template          # once — builds the golden image
+./provision sandbox new               # clone and boot, ~40s
+./provision sandbox payload ./stuff   # attach a directory as a read-only CD
+./provision sandbox offline           # unplug the virtual cable
+./provision sandbox console           # the only way in once offline
+./provision sandbox destroy
+```
+
+`offline` sets `link_down` on the NIC, which is the moral equivalent of pulling
+the cable: the VM keeps its config and can be reconnected without a rebuild.
+
+The payload is an ISO, so it is read-only — whatever you are testing cannot
+write back to it, and you never mount an untrusted filesystem on the Proxmox
+host. It hotplugs onto the SCSI controller and appears as `/dev/sr1` within
+seconds, no reboot needed.
+
+Two things worth knowing:
+
+- **Cutting the link afterwards does not undo the install.** If a package is
+  actively malicious, the dangerous moment is `apt install`, which happens
+  while the VM is on the LAN. Use `new --offline` with a `payload` when that
+  matters.
+- **`online` alone will not restore connectivity.** Ubuntu configures the
+  static address through systemd-networkd, which drops it on carrier loss and
+  does not restore it when the carrier returns. Use `online --reboot`, or run
+  `sudo netplan apply` on the console.
+
+`sandbox reset` rolls back to a snapshot taken at first boot, which needs
+`VM.Snapshot` and `VM.Snapshot.Rollback` on the API token. Without them
+everything else still works and `new` warns once.
 
 ## Recovery
 
@@ -259,7 +312,7 @@ Recovering a wiped node is the same operation as provisioning a new one.
 ### On a machine that already has the repo
 
 ```bash
-./provision up
+./provision homelab up
 ```
 
 ### On a bare machine
@@ -278,10 +331,10 @@ Then:
 cd ~/talos
 $EDITOR provision.toml            # fill in the <placeholder> values
 export OP_ACCOUNT=my.1password.com
-./provision up
+./provision homelab up
 ```
 
-`./provision up` runs preflight, checks the 1Password entries, regenerates the
+`./provision homelab up` runs preflight, checks the 1Password entries, regenerates the
 generated files, provisions the VM and Talos, writes `~/.kube/config` and
 `~/.talos/config`, seeds the two cluster secrets, hands off to Flux, and backs
 up Terraform state. Every step is idempotent, so re-run it after fixing
@@ -290,7 +343,7 @@ whatever stopped it.
 > **Bootstrap ordering.** Flux sources its `GitRepository` from Gitea over SSH,
 > and Gitea runs on this cluster. On a cold cluster Flux cannot sync until the
 > Tailscale operator and Gitea are up. It retries every minute, so this
-> resolves itself — deploy Gitea with `./provision bootstrap gitea` if you want
+> resolves itself — deploy Gitea with `./provision homelab bootstrap gitea` if you want
 > to hurry it along.
 
 ### What survives a full node wipe
@@ -322,7 +375,7 @@ Mounts use `hard`, so I/O blocks rather than erroring while the NAS is away —
 that protects data, but leaves processes kubelet cannot kill.
 
 ```bash
-./provision nas recover
+./provision homelab nas recover
 ```
 
 Waits for the NAS, proves it is writable, then restarts only NFS-backed pods

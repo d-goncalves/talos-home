@@ -42,15 +42,15 @@ export OP_ACCOUNT=my.1password.com    # desktop app, unlocks with biometrics
 set.
 
 ```bash
-./provision secrets check
+./provision homelab secrets check
 ```
 
 ## Configuration
 
 `terraform.tfvars.json` is **generated** from `provision.toml` by
-`provision sync` and is gitignored. Edit `provision.toml`, not the tfvars.
+`provision homelab sync` and is gitignored. Edit `provision.toml`, not the tfvars.
 
-Running terraform directly works too — just run `provision sync` first so the
+Running terraform directly works too — just run `provision homelab sync` first so the
 tfvars exists.
 
 ## State holds secrets, by design
@@ -64,7 +64,7 @@ that PKI, so it cannot be sourced from 1Password. What matters is that no secret
 is in a **committed file**. State is gitignored; back it up after every apply:
 
 ```bash
-./provision state backup
+./provision homelab state backup
 ```
 
 That stores it as a 1Password document in the `Server Infrastructure` vault,
@@ -80,14 +80,14 @@ state encryption and Terraform does not. The config runs on both.
 Configuration comes from `provision.toml` at the repo root:
 
 ```bash
-./provision sync    # generates terraform.tfvars.json
-./provision apply
+./provision homelab sync    # generates terraform.tfvars.json
+./provision homelab apply
 ```
 
 Or use terraform directly after a sync:
 
 ```bash
-./provision sync
+./provision homelab sync
 terraform init && terraform apply
 ```
 
@@ -114,7 +114,7 @@ bad reference fails the install after the VM is already up.
 To close the remaining gap, provision a small throwaway node. The Proxmox host
 has headroom for it (VM 102 `rocky-rke2` is stopped, so ~4 GB is free) — no
 need to shrink the running cluster. Point `[nodes.*]` at a free `vm_id` and
-~2560 MB, run `./provision up`, confirm, then `./provision destroy`.
+~2560 MB, run `./provision homelab up`, confirm, then `./provision homelab destroy`.
 
 ## Notes
 

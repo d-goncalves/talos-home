@@ -19,11 +19,11 @@ fail() { echo "pre-push: $1" >&2; exit 1; }
 
 # ── Generated files must match their source ──────────────────────────────────
 if [[ -x ./provision ]]; then
-  ./provision sync >/dev/null 2>&1 || fail "'./provision sync' failed"
+  ./provision homelab sync >/dev/null 2>&1 || fail "'./provision homelab sync' failed"
 
   if ! git diff --quiet -- kubernetes/apps/kustomization.yaml; then
     git --no-pager diff --stat -- kubernetes/apps/kustomization.yaml >&2
-    fail "kustomization.yaml is out of date — run './provision sync' and commit"
+    fail "kustomization.yaml is out of date — run './provision homelab sync' and commit"
   fi
 fi
 
@@ -38,8 +38,8 @@ fi
 
 # ── Persistent data must survive a rebuild ───────────────────────────────────
 if [[ -x ./provision ]]; then
-  ./provision apps storage >/dev/null 2>&1 || \
-    fail "storage audit failed — run './provision apps storage'"
+  ./provision homelab apps storage >/dev/null 2>&1 || \
+    fail "storage audit failed — run './provision homelab apps storage'"
 fi
 
 # ── The apps overlay must build ──────────────────────────────────────────────

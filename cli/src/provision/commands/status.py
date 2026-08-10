@@ -11,7 +11,8 @@ from ..shell import require, run, try_run
 
 @click.command("status")
 @click.option("--wide", is_flag=True, help="Include pod and PVC detail.")
-def status(wide: bool) -> None:
+@click.option("--deep", is_flag=True, help="Also run talosctl health (slower).")
+def status(wide: bool, deep: bool) -> None:
     """Show node, Flux and workload state."""
     require("kubectl")
 
@@ -47,10 +48,18 @@ def status(wide: bool) -> None:
         rule("PersistentVolumeClaims")
         run(["kubectl", "get", "pvc", "--all-namespaces"], echo=False, check=False)
 
+    if deep:
+        rule("Talos health")
+        _talos_health()
 
-@click.command("health")
-def health() -> None:
-    """Run talosctl health against the cluster."""
+
+def _talos_health() -> None:
+    """Ask Talos itself, rather than the Kubernetes API on top of it.
+
+    Worth reaching for when kubectl answers but something underneath is wrong —
+    etcd unhappy, a service crash-looping — since the API server can look fine
+    while the node is degraded.
+    """
     require("talosctl")
     endpoint = tf.output("controlplane_ip")
 
