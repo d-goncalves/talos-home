@@ -28,6 +28,17 @@ spec:
       labels:
         app: uptime-kuma
     spec:
+      # The NAS squashes every write to this uid/gid, and its entrypoint only
+      # chowns /app/data when it is running as root. As root the chown is
+      # attempted, denied by the squash, and the container exits:
+      #   chown: changing ownership of '/app/data/kuma.db': Operation not permitted
+      # Running as the squash owner skips that branch, and the files already
+      # have the right ownership so nothing needs changing.
+      # No runAsUser here on purpose. The entrypoint starts as root, chowns
+      # /app/data to PUID:PGID, then drops to that user with setpriv. Forcing a
+      # non-root uid makes setpriv fail ("setgroups: Operation not permitted").
+      # Root is squashed to the same uid on this NFS export anyway, so the
+      # chown below is a no-op rather than a privileged write.
       containers:
         - name: uptime-kuma
           image: louislam/uptime-kuma:latest
@@ -36,6 +47,14 @@ spec:
           env:
             - name: TZ
               value: Europe/Lisbon
+            # The entrypoint chowns /app/data to PUID:PGID, which default to
+            # root. On NFS that is squashed and denied, so the container dies.
+            # Pointing them at the owner the NAS already assigns makes the
+            # chown a no-op instead of a privileged operation.
+            - name: PUID
+              value: "977"
+            - name: PGID
+              value: "988"
           volumeMounts:
             - name: data
               mountPath: /app/data
