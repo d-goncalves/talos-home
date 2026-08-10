@@ -7,6 +7,7 @@ Flux.
 
 from __future__ import annotations
 
+import json
 import os
 import time
 
@@ -159,31 +160,108 @@ def bootstrap_gitea() -> None:
     reimplementing it here.
     """
     require("helm")
-    script = tf.repo_root() / "scripts" / "deploy-gitea.sh"
+    root = tf.repo_root()
+
+    if _gitea_running():
+        info("gitea is already running")
+        return
+
+    # Its namespace, PVC and ExternalSecret live in the apps overlay, which
+    # Flux cannot deliver yet — Flux reads from the Gitea this is deploying.
+    rule("Gitea prerequisites")
+    _ensure_namespace("gitea")
+    _apply_direct(root / "kubernetes" / "apps" / "gitea",
+                  kinds={"PersistentVolumeClaim", "Service", "ExternalSecret"})
+
+    script = root / "scripts" / "deploy-gitea.sh"
     if not script.exists():
         fail(f"not found: {script}")
+    rule("Gitea")
     run(["bash", str(script)])
 
 
 @bootstrap.command("flux")
-def bootstrap_flux() -> None:
-    """Apply the Flux sync manifests and kustomizations."""
+@click.option("--controllers-only", is_flag=True, help="Install the controllers, not the sync.")
+@click.option("--sync-only", is_flag=True, help="Point Flux at the repo; assume controllers exist.")
+def bootstrap_flux(controllers_only: bool, sync_only: bool) -> None:
+    """Install the Flux controllers and point them at the repo.
+
+    Split in two because the order matters on a cold cluster: the controllers
+    have to exist before anything can reconcile, but the sync cannot succeed
+    until Gitea is serving the repo it reads from.
+    """
     require("kubectl")
     root = tf.repo_root()
 
-    sync = root / "kubernetes" / "flux" / "flux-system" / "gotk-sync.yaml"
-    kustomizations = root / "kubernetes" / "flux" / "kustomizations"
-
     rule("Flux")
-    _kubectl("apply", "-f", str(sync))
-    _kubectl("apply", "-k", str(kustomizations))
-    success("Flux manifests applied")
+    if not sync_only:
+        components = root / "kubernetes" / "flux" / "flux-system" / "gotk-components.yaml"
+        _kubectl("apply", "-f", str(components))
+        info("waiting for the controllers")
+        for _ in range(60):
+            ok, ready = try_run(
+                ["kubectl", "get", "deploy", "-n", FLUX_NAMESPACE,
+                 "-o", "jsonpath={.items[*].status.readyReplicas}"],
+                capture=True, echo=False)
+            if ok and len([x for x in ready.split() if x == "1"]) >= 4:
+                break
+            time.sleep(5)
+        success("Flux controllers running")
 
-    warn(
-        "Flux syncs from Gitea over SSH, and Gitea runs on this cluster. On a "
-        "cold cluster it will fail until the Tailscale operator and Gitea are "
-        "up; it retries every minute, so this resolves itself."
-    )
+    if not controllers_only:
+        _kubectl("apply", "-f",
+                 str(root / "kubernetes" / "flux" / "flux-system" / "gotk-sync.yaml"))
+        _kubectl("apply", "-k", str(root / "kubernetes" / "flux" / "kustomizations"))
+        success("Flux pointed at the repo")
+
+
+def _substitutions() -> dict:
+    """The values Flux would substitute via postBuild, read from cluster-vars."""
+    ok, raw = try_run(
+        ["kubectl", "get", "secret", "-n", FLUX_NAMESPACE, CLUSTER_VARS_SECRET,
+         "-o", "json"], capture=True, echo=False)
+    if not ok:
+        return {}
+    import base64
+    return {
+        k: base64.b64decode(v).decode()
+        for k, v in (json.loads(raw).get("data") or {}).items()
+    }
+
+
+def _apply_direct(path, kinds: set[str] | None = None) -> bool:
+    """Apply an overlay without Flux, doing the postBuild substitution here.
+
+    Needed only for a cold start: Flux sources from Gitea, and on a new cluster
+    Gitea does not exist yet, so the things Gitea itself depends on — the CSI
+    driver, External Secrets, its own namespace and PVC — cannot come from Flux.
+    """
+    import yaml as _yaml
+
+    text = run(["kubectl", "kustomize", str(path)], capture=True, echo=False)
+    for key, value in _substitutions().items():
+        text = text.replace("${" + key + "}", value)
+    # Flux renders $${x} as a literal ${x}; nothing else will do it here.
+    text = text.replace("$${", "${")
+
+    if kinds:
+        docs = [d for d in _yaml.safe_load_all(text) if d and d.get("kind") in kinds]
+        if not docs:
+            return True
+        text = "\n---\n".join(_yaml.safe_dump(d) for d in docs)
+
+    ok, err = try_run(["kubectl", "apply", "-f", "-"], input_text=text,
+                      capture=True, echo=False)
+    if not ok:
+        warn(f"apply of {path.name} failed: {err.strip()[:300]}")
+    return ok
+
+
+def _gitea_running() -> bool:
+    ok, out = try_run(
+        ["kubectl", "get", "deploy", "-n", "gitea", "gitea",
+         "-o", "jsonpath={.status.readyReplicas}"], capture=True, echo=False)
+    return ok and out.strip() not in ("", "0")
 
 
 def _suspend_apps() -> bool:
@@ -218,30 +296,58 @@ def _wait_kustomization(name: str, timeout: int) -> bool:
 )
 @click.pass_context
 def bootstrap_all(ctx: click.Context, skip_nas_gate: bool) -> None:
-    """Seed secrets, bring up infrastructure, prove the NAS works, then apps.
+    """Bring a cluster from empty to fully reconciling.
 
-    Apps are held back until the cluster has demonstrably written to the NAS.
-    An app that starts without its NFS volume does not fail cleanly — it
-    initialises an empty database, or writes to a directory that a later mount
-    hides. Both are worse than the app simply not starting.
+    The order exists because of one circular dependency: Flux reads the repo
+    from Gitea, and Gitea runs on the cluster Flux is building. So the things
+    Gitea needs — the CSI driver for its volume, External Secrets for its admin
+    credential — are applied directly first, Gitea is deployed, and only then is
+    Flux pointed at the repo. From that moment Flux owns everything.
+
+    Every step is idempotent; on a cluster that already has Gitea the direct
+    applies are skipped.
     """
     from .nas import nas_verify
 
     ctx.invoke(bootstrap_secrets)
 
+    # 1. Controllers only. helm-controller has to exist before any HelmRelease.
+    ctx.invoke(bootstrap_flux, controllers_only=True, sync_only=False)
+
+    # 2. Infrastructure, applied directly because Flux has no source yet:
+    #    the CSI driver, External Secrets and the Tailscale operator.
+    if not _gitea_running():
+        rule("Infrastructure (direct, pre-Gitea)")
+        root = tf.repo_root()
+        _apply_direct(root / "kubernetes" / "flux" / "repositories")
+        _apply_direct(root / "kubernetes" / "infrastructure")
+        info("waiting for the CSI driver and External Secrets")
+        for _ in range(90):
+            ok, out = try_run(
+                ["kubectl", "get", "helmrelease", "-A",
+                 "-o", "jsonpath={.items[*].status.conditions[?(@.type=='Ready')].status}"],
+                capture=True, echo=False)
+            if ok and out.count("True") >= 2:
+                break
+            time.sleep(10)
+        _apply_direct(root / "kubernetes" / "infrastructure" / "external-secrets" / "store")
+
+    # 3. Gitea, so Flux has something to read.
+    ctx.invoke(bootstrap_gitea)
+
+    # 4. Now Flux can sync. Hold apps back until the NAS is proven.
+    suspended = False
+    if not skip_nas_gate:
+        rule("Gating apps on NAS availability")
+        suspended = _suspend_apps()
+
+    ctx.invoke(bootstrap_flux, controllers_only=False, sync_only=True)
+
     if skip_nas_gate:
-        warn("NAS gate skipped — apps may start without their storage")
-        ctx.invoke(bootstrap_flux)
         rule("Bootstrap complete")
+        warn("NAS gate skipped — apps may start without their storage")
         return
 
-    rule("Gating apps on NAS availability")
-    suspended = _suspend_apps()
-
-    ctx.invoke(bootstrap_flux)
-
-    # Suspend again: on a cold cluster the Kustomization only exists after the
-    # manifests above are applied, so the first attempt was a no-op.
     if not suspended:
         for _ in range(30):
             if _suspend_apps():
@@ -249,14 +355,14 @@ def bootstrap_all(ctx: click.Context, skip_nas_gate: bool) -> None:
                 break
             time.sleep(2)
 
-    info("Waiting for infrastructure (CSI driver and storage classes)")
+    info("Waiting for infrastructure to reconcile")
     if not _wait_kustomization("infrastructure", timeout=600):
         fail("infrastructure did not become Ready — apps left suspended")
 
     try:
         ctx.invoke(nas_verify, storage_class=None, timeout=180)
     except SystemExit:
-        warn("apps remain SUSPENDED — nothing has been deployed against bad storage")
+        warn("apps remain SUSPENDED — nothing deployed against bad storage")
         warn("fix NAS access, then: flux resume kustomization apps")
         raise
 
