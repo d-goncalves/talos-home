@@ -82,18 +82,10 @@ resource "talos_cluster_kubeconfig" "this" {
   }
 }
 
-# Gate the outputs on the cluster actually being healthy, so a successful apply
-# means something. Kubernetes checks are included: a node that boots but never
-# gets a working kubelet is not a provisioned cluster.
-data "talos_cluster_health" "this" {
-  client_configuration = talos_machine_secrets.this.client_configuration
-  control_plane_nodes  = local.controlplane_ips
-  worker_nodes         = [for _, n in var.nodes : n.ip if n.machine_type == "worker"]
-  endpoints            = local.controlplane_ips
-
-  depends_on = [talos_cluster_kubeconfig.this]
-
-  timeouts = {
-    read = "15m"
-  }
-}
+# NOTE: there is deliberately no talos_cluster_health data source here.
+# It gated the outputs on a healthy cluster, which reads well until you try to
+# tear a broken one down: the data source is evaluated during destroy planning
+# too, so `terraform destroy` failed with "cluster health check failed" on
+# exactly the cluster you most want to remove. Health is checked by
+# `./provision health` and `./provision status` instead, where failing is
+# informative rather than blocking.

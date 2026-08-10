@@ -16,6 +16,9 @@ VAULT = "Server Infrastructure"
 
 ITEM_ESO_TOKEN = "1Password Service Account - talos-home"
 ITEM_TF_STATE = "Terraform State - talos-home"
+# Flux's deploy key for the Gitea GitRepository. Without it a rebuilt
+# cluster cannot pull the repo and nothing reconciles.
+ITEM_FLUX_SSH = "Flux Deploy Key - talos-home"
 # Note: the old "Talos - talosconfig" document is no longer read. talosconfig
 # now comes from terraform state via `./provision config write`.
 ITEM_PROXMOX = "Proxmox API - talos-home"

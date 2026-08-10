@@ -143,6 +143,27 @@ def bootstrap_secrets() -> None:
 
     _ensure_namespace(FLUX_NAMESPACE)
     _apply_secret(CLUSTER_VARS_SECRET, FLUX_NAMESPACE, literals)
+
+    # ── Flux's deploy key for the Gitea GitRepository ──────────────────────
+    # Not in git and not derivable: without it the GitRepository fails with
+    # "secrets \"flux-system\" not found" and nothing reconciles at all.
+    identity = op.field(op.ITEM_FLUX_SSH, "identity")
+    known_hosts = op.field(op.ITEM_FLUX_SSH, "known_hosts")
+    if identity and known_hosts:
+        public = op.field(op.ITEM_FLUX_SSH, "identity.pub") or ""
+        _apply_secret("flux-system", FLUX_NAMESPACE, {
+            "identity": identity,
+            "identity.pub": public,
+            "known_hosts": known_hosts,
+        })
+        success(f"{FLUX_NAMESPACE}/flux-system (Gitea deploy key)")
+    else:
+        warn(
+            f"1Password item '{op.ITEM_FLUX_SSH}' has no identity/known_hosts — "
+            "Flux will not be able to pull from Gitea."
+        )
+        warn("Capture it from a working cluster with:")
+        warn("  kubectl get secret -n flux-system flux-system -o jsonpath='{.data.identity}' | base64 -d")
     success(f"{FLUX_NAMESPACE}/{CLUSTER_VARS_SECRET}")
 
     for key, value in literals.items():
@@ -213,6 +234,28 @@ def bootstrap_flux(controllers_only: bool, sync_only: bool) -> None:
                  str(root / "kubernetes" / "flux" / "flux-system" / "gotk-sync.yaml"))
         _kubectl("apply", "-k", str(root / "kubernetes" / "flux" / "kustomizations"))
         success("Flux pointed at the repo")
+
+
+def _wait_cluster_ready(timeout: int = 600) -> bool:
+    """Block until the API serves and a node is registered and Ready.
+
+    terraform returns as soon as the bootstrap RPC succeeds, but etcd and the
+    apiserver are still coming up and kubelet has not registered the node yet.
+    Bootstrapping into that window fails on the first kubectl call with a bare
+    "kubectl exited 1", which looks like a real error and is not.
+    """
+    info("waiting for the cluster to accept work")
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        ok, out = try_run(
+            ["kubectl", "get", "nodes",
+             "-o", "jsonpath={.items[*].status.conditions[?(@.type=='Ready')].status}"],
+            capture=True, echo=False)
+        if ok and "True" in out:
+            success("cluster is ready")
+            return True
+        time.sleep(10)
+    return False
 
 
 def _substitutions() -> dict:
@@ -308,6 +351,9 @@ def bootstrap_all(ctx: click.Context, skip_nas_gate: bool) -> None:
     applies are skipped.
     """
     from .nas import nas_verify
+
+    if not _wait_cluster_ready():
+        fail("cluster did not become ready — nothing was changed")
 
     ctx.invoke(bootstrap_secrets)
 

@@ -23,7 +23,6 @@ resources:
   - gitea/
   - immich/
   - adventurelog/
-  - monitoring/
   - servarr/
   - outline/
   - audiobookshelf/
@@ -37,6 +36,9 @@ resources:
   - bentopdf/
   - it-tools/
   - librespeed/
+
+# Disabled in provision.toml — workloads pruned, data retained:
+#   monitoring
 
 patches:
   - target:
