@@ -116,6 +116,37 @@ def build_plan() -> dict:
     }
 
 
+def _wait_pods_gone(namespace: str, pvc: str, timeout: int = 300) -> bool:
+    """Block until no pod in the namespace still mounts this PVC.
+
+    A fixed sleep is not enough. SQLite checkpoints and removes its -wal and
+    -shm files as it shuts down, so a copy that starts too early sees them in
+    the directory listing and then fails to stat them — and, worse, could
+    capture a database mid-checkpoint. Wait for the writer to actually be gone.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        ok, raw = try_run(["kubectl", "get", "pods", "-n", namespace, "-o", "json"],
+                          capture=True, echo=False)
+        if not ok:
+            return True
+        holders = 0
+        for pod in json.loads(raw).get("items", []):
+            if pod["status"].get("phase") in ("Succeeded", "Failed"):
+                continue
+            claims = {
+                v["persistentVolumeClaim"]["claimName"]
+                for v in (pod["spec"].get("volumes") or [])
+                if v.get("persistentVolumeClaim")
+            }
+            if pvc in claims:
+                holders += 1
+        if holders == 0:
+            return True
+        time.sleep(3)
+    return False
+
+
 def _ensure_shares(nas_ip: str, data_path: str, shares: set[str]) -> bool:
     """Create the parent share directories on the NAS.
 
@@ -332,9 +363,11 @@ def _execute(plan: dict, yes: bool) -> None:
             run(["kubectl", "scale", kind, "-n", c["namespace"], name,
                  "--replicas=0"], check=False)
 
-    if scaled:
-        info("waiting for pods to terminate")
-        time.sleep(20)
+    # Wait for every writer to actually exit, per volume.
+    for c in plan["copies"] + plan["nfs_copies"]:
+        if not _wait_pods_gone(c["namespace"], c["pvc"]):
+            warn(f"pods still hold {c['namespace']}/{c['pvc']} — skipping to stay safe")
+            fail("could not quiesce all writers; nothing was deleted")
 
     ok_all = True
 
@@ -345,6 +378,8 @@ def _execute(plan: dict, yes: bool) -> None:
             f'              test -d "/share/{r["from"]}"\n'
             f'              mkdir -p "/share/{r["to"]}"\n'
             f'              cp -a "/share/{r["from"]}/." "/share/{r["to"]}/"\n'
+            f'              find "/share/{r["to"]}" -type d -exec chmod 2770 {{}} + 2>/dev/null || true\n'
+            f'              find "/share/{r["to"]}" -type f -exec chmod 660 {{}} + 2>/dev/null || true\n'
             f'              src=$(find "/share/{r["from"]}" | wc -l)\n'
             f'              dst=$(find "/share/{r["to"]}" | wc -l)\n'
             f'              echo "entries: src=$src dst=$dst"\n'
@@ -362,6 +397,8 @@ def _execute(plan: dict, yes: bool) -> None:
             f'              set -e\n'
             f'              mkdir -p "/share/{c["to"]}"\n'
             f'              cp -a /src/. "/share/{c["to"]}/"\n'
+            f'              find "/share/{c["to"]}" -type d -exec chmod 2770 {{}} + 2>/dev/null || true\n'
+            f'              find "/share/{c["to"]}" -type f -exec chmod 660 {{}} + 2>/dev/null || true\n'
             f'              echo "--- copied ---"\n'
             f'              du -sh "/share/{c["to"]}" || true\n'
         )
