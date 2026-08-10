@@ -4,6 +4,14 @@
 # in-cluster LoadBalancer service instead of going out over the tailnet.
 cluster:
   allowSchedulingOnControlPlanes: true
+  controllerManager:
+    extraArgs:
+      # Kubernetes only garbage-collects terminated pods once this many exist,
+      # and the default is 12500 — effectively never on a single-node cluster.
+      # Every graceful shutdown (node reboot, scale to zero, eviction) leaves a
+      # Succeeded pod behind, so `kubectl get pods -A` fills with corpses and
+      # real failures get lost among pods that died months ago.
+      terminated-pod-gc-threshold: "100"
   inlineManifests:
     - name: coredns-tailscale-rewrite
       contents: |
