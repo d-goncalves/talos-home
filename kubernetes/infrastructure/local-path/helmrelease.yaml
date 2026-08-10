@@ -32,9 +32,12 @@ spec:
       defaultClass: true
       name: local-path
       reclaimPolicy: Delete
-    # Talos mounts /var as writable ephemeral storage; the default
-    # /opt/local-path-provisioner is read-only on a Talos node.
+    # Talos mounts /var as writable ephemeral storage; the chart default of
+    # /opt/local-path-provisioner is read-only on a Talos node. Note this must
+    # not be under /var/mnt either — that path is reserved for user disk
+    # volumes and is itself read-only, so the helper pod fails with
+    # "mkdir: read-only file system" and provisioning times out.
     nodePathMap:
       - node: DEFAULT_PATH_FOR_NON_LISTED_NODES
         paths:
-          - /var/mnt/local-path-provisioner
+          - /var/local-path-provisioner
