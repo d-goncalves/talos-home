@@ -6,6 +6,8 @@ with the existing recover.sh flow and the ExternalSecret definitions.
 
 from __future__ import annotations
 
+import json
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -92,15 +94,36 @@ def ensure_signed_in() -> None:
 
 
 def field(item: str, name: str, vault: str = VAULT) -> str | None:
-    """Read a single field. Returns None when the item or field is missing."""
+    """Read a single field. Returns None when the item or field is missing.
+
+    Goes through --format=json rather than --fields. For a multiline value like
+    an SSH private key, --fields wraps the output in quotes, and feeding that
+    to Flux produces "ssh: no key found" — the key looks right in every
+    inspection but is not parseable.
+    """
     try:
-        value = run(
-            ["op", "item", "get", item, "--vault", vault, "--fields", name, "--reveal"],
+        raw = run(
+            ["op", "item", "get", item, "--vault", vault, "--format=json"],
             capture=True,
         )
     except CommandError:
         return None
-    return value.strip() or None
+
+    try:
+        data = json.loads(raw or "{}")
+    except json.JSONDecodeError:
+        return None
+
+    for entry in data.get("fields", []):
+        if entry.get("label") == name or entry.get("id") == name:
+            value = entry.get("value")
+            if not value:
+                continue
+            # PEM material must end with a newline or parsers reject it.
+            if "PRIVATE KEY" in value and not value.endswith("\n"):
+                value += "\n"
+            return value
+    return None
 
 
 def read_document(item: str, vault: str = VAULT) -> str | None:

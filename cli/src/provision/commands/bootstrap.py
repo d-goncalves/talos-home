@@ -236,6 +236,32 @@ def bootstrap_flux(controllers_only: bool, sync_only: bool) -> None:
         success("Flux pointed at the repo")
 
 
+def _warn_if_worktree_differs() -> None:
+    """Warn when the working tree is not what Flux will pull.
+
+    The cold-start path applies manifests from the local checkout, but Flux
+    reconciles whatever is committed on the tracked branch. If those differ —
+    uncommitted edits, or an unmerged branch — Flux immediately tries to revert
+    what bootstrap just applied, and for immutable objects like a StorageClass
+    it cannot: "parameters: field is immutable", and the Kustomization stops.
+    """
+    ok, branch = try_run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                         capture=True, echo=False)
+    if not ok:
+        return
+    branch = branch.strip()
+
+    tracked = "master"
+    if branch != tracked:
+        warn(f"on branch '{branch}', but Flux reconciles '{tracked}'")
+        warn("bootstrap applies the working tree; Flux will apply " + tracked)
+        warn("anything immutable that differs between them will wedge the Kustomization")
+
+    dirty, out = try_run(["git", "status", "--porcelain"], capture=True, echo=False)
+    if dirty and out.strip():
+        warn(f"{len(out.strip().splitlines())} uncommitted change(s) — Flux will not see them")
+
+
 def _wait_cluster_ready(timeout: int = 600) -> bool:
     """Block until the API serves and a node is registered and Ready.
 
@@ -351,6 +377,8 @@ def bootstrap_all(ctx: click.Context, skip_nas_gate: bool) -> None:
     applies are skipped.
     """
     from .nas import nas_verify
+
+    _warn_if_worktree_differs()
 
     if not _wait_cluster_ready():
         fail("cluster did not become ready — nothing was changed")
