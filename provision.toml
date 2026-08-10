@@ -64,6 +64,10 @@ site    = "default"
 #
 #  Written for N nodes, expected to run with one: the Proxmox host has 15 GiB
 #  and 4 cores in total, which is not enough for a three-node control plane.
+#
+#  ⚠️  VM 100 uses ballooning, so starting a second VM makes the host reclaim
+#      memory from it. A 3 GiB test node dropped VM 100 from 9924 to 7876 MiB
+#      and its kube-apiserver stopped serving. Do not run both at once.
 # ─────────────────────────────────────────────────────────────────────────────
 
 [nodes.talos-cp-01]

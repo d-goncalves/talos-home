@@ -28,17 +28,17 @@ output "controlplane_ip" {
 
 output "schematic_id" {
   description = "Image Factory schematic ID. Pin this when upgrading Talos so the extensions come along."
-  value       = talos_image_factory_schematic.this.id
+  value       = { for k, s in talos_image_factory_schematic.this : k => s.id }
 }
 
 output "installer_image" {
   description = "Factory installer image used by machine.install.image"
-  value       = data.talos_image_factory_urls.this.urls.installer
+  value       = { for k, u in data.talos_image_factory_urls.this : k => u.urls.installer }
 }
 
 output "iso_url" {
   description = "Factory ISO URL, for booting a replacement VM by hand"
-  value       = data.talos_image_factory_urls.this.urls.iso
+  value       = { for k, u in data.talos_image_factory_urls.this : k => u.urls.iso }
 }
 
 # Consumed by `provision config write`, which write these to

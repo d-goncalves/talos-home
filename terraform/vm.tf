@@ -44,7 +44,7 @@ resource "proxmox_virtual_environment_vm" "node" {
   }
 
   cdrom {
-    file_id = proxmox_download_file.talos_iso.id
+    file_id = proxmox_download_file.talos_iso[each.key].id
   }
 
   network_device {
@@ -65,11 +65,8 @@ resource "proxmox_virtual_environment_vm" "node" {
 
   boot_order = ["scsi0", "ide3"]
 
-  lifecycle {
-    ignore_changes = [
-      # The ISO is only needed for the initial install. Leaving it attached is
-      # harmless, but a factory rebuild should not force a VM replacement.
-      cdrom,
-    ]
-  }
+  # Deliberately NOT ignoring changes to cdrom. That was here to stop a factory
+  # rebuild churning the VM, but Terraform deletes the superseded ISO while the
+  # VM still references it — leaving a machine that boots from a file which no
+  # longer exists, and reports only "host is down".
 }

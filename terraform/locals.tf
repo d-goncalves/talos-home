@@ -44,7 +44,7 @@ locals {
         gateway         = var.gateway
         nameservers     = var.nameservers
         install_disk    = node.install_disk
-        installer_image = data.talos_image_factory_urls.this.urls.installer
+        installer_image = data.talos_image_factory_urls.this[name].urls.installer
       }),
       node.machine_type == "controlplane" ? local.controlplane_patch : "",
       local.tailscale_patch == null ? "" : local.tailscale_patch,

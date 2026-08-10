@@ -2,7 +2,9 @@
 # tables in provision.toml.
 machine:
   network:
-    hostname: ${hostname}
+    # hostname is NOT set here: it comes from the kernel ip= argument in the
+    # boot image. Setting it in both places makes Talos reject the config with
+    # "static hostname is already set in v1alpha1 config".
     interfaces:
       - interface: ${interface}
         addresses:

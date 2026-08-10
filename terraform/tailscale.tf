@@ -17,7 +17,10 @@
 resource "tailscale_tailnet_key" "node" {
   count = var.tailscale_enabled ? 1 : 0
 
-  description   = "${var.cluster_name} nodes (terraform-managed)"
+  # Tailscale rejects punctuation here: parentheses return
+  # "description had invalid characters (400)". Letters, digits, spaces and
+  # hyphens only.
+  description   = "${var.cluster_name} nodes - terraform managed"
   reusable      = true
   ephemeral     = false
   preauthorized = true
