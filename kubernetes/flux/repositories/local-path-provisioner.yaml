@@ -1,8 +1,19 @@
+# Rancher does not publish a Helm repository index for local-path-provisioner:
+# the chart only exists as a directory in the git tree, so a HelmRepository
+# pointed at deploy/chart 404s on index.yaml and every local-path PVC stays
+# Pending. Source the chart from git instead, pinned to a tag so a rebuild
+# resolves the same version rather than whatever master happens to be.
 apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
+kind: GitRepository
 metadata:
   name: local-path-provisioner
   namespace: flux-system
 spec:
   interval: 24h
-  url: https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/chart
+  url: https://github.com/rancher/local-path-provisioner
+  ref:
+    tag: v0.0.31
+  # Fetch only the chart directory; the rest of the repo is source we never use.
+  ignore: |
+    /*
+    !/deploy/chart/local-path-provisioner

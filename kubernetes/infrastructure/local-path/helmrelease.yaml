@@ -13,10 +13,11 @@ spec:
   interval: 1h
   chart:
     spec:
-      chart: local-path-provisioner
-      version: "0.0.31"
+      # Path within the GitRepository, not a chart name: the version comes from
+      # the tag that source is pinned to, so there is no `version` here.
+      chart: ./deploy/chart/local-path-provisioner
       sourceRef:
-        kind: HelmRepository
+        kind: GitRepository
         name: local-path-provisioner
         namespace: flux-system
   install:
