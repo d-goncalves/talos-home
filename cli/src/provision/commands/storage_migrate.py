@@ -356,7 +356,12 @@ def _copy_all(plan: dict) -> bool:
             f'              mkdir -p "/share/{r["to"]}"\n'
             f'              cp -a "/share/{r["from"]}/." "/share/{r["to"]}/"\n'
             f'              find "/share/{r["to"]}" -type d -exec chmod 2770 {{}} + 2>/dev/null || true\n'
-            f'              find "/share/{r["to"]}" -type f -exec chmod 660 {{}} + 2>/dev/null || true\n'
+            # ug+rw,o-rwx rather than a flat 660: cp -a copies the mode
+            # correctly, and a literal 660 then strips the executable bit off
+            # everything. That silently broke Gitea's per-repo git hooks, so
+            # every push was accepted but no post-receive ran. Symbolic modes
+            # grant the group access the NAS squash needs without touching x.
+            f'              find "/share/{r["to"]}" -type f -exec chmod ug+rw,o-rwx {{}} + 2>/dev/null || true\n'
             f'              src=$(find "/share/{r["from"]}" | wc -l)\n'
             f'              dst=$(find "/share/{r["to"]}" | wc -l)\n'
             f'              echo "entries: src=$src dst=$dst"\n'
@@ -376,7 +381,8 @@ def _copy_all(plan: dict) -> bool:
             f'              mkdir -p "/share/{c["to"]}"\n'
             f'              cp -a /src/. "/share/{c["to"]}/"\n'
             f'              find "/share/{c["to"]}" -type d -exec chmod 2770 {{}} + 2>/dev/null || true\n'
-            f'              find "/share/{c["to"]}" -type f -exec chmod 660 {{}} + 2>/dev/null || true\n'
+            # See the note on the NFS copies above: a flat 660 strips x.
+            f'              find "/share/{c["to"]}" -type f -exec chmod ug+rw,o-rwx {{}} + 2>/dev/null || true\n'
             f'              echo "--- copied ---"\n'
             f'              du -sh "/share/{c["to"]}" || true\n'
         )
