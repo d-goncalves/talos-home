@@ -292,10 +292,14 @@ Two things worth knowing:
   actively malicious, the dangerous moment is `apt install`, which happens
   while the VM is on the LAN. Use `new --offline` with a `payload` when that
   matters.
-- **`online` alone will not restore connectivity.** Ubuntu configures the
-  static address through systemd-networkd, which drops it on carrier loss and
-  does not restore it when the carrier returns. Use `online --reboot`, or run
-  `sudo netplan apply` on the console.
+- **The snippet owns the network config.** Proxmox writes its cloud-init
+  network config against the interface name `eth0`, but the image names the NIC
+  `ens18`, and the `.link` file that would rename it only applies when udev
+  first sees the device. So netplan's config matches nothing and the interface
+  is left *unmanaged* — fine at first boot, but it never recovers from a
+  carrier drop. The snippet writes a `05-sandbox.network` matching `en*`
+  instead, with `IgnoreCarrierLoss`, which is what lets `online` work without a
+  reboot.
 
 `console --serial` attaches to the VM's serial console over SSH to the Proxmox
 host. It is the one route in once the NIC is disconnected, so it is what you

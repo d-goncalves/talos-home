@@ -150,11 +150,7 @@ def test_user_data_carries_the_user_and_keys():
     yaml = pytest.importorskip("yaml")
     from provision.commands.sandbox import USER_DATA
 
-    body = USER_DATA.format(
-        username="lab",
-        keys="\n".join(f"      - {k}" for k in ["ssh-ed25519 AAAAkey1", "ssh-ed25519 AAAAkey2"]),
-    )
-    parsed = yaml.safe_load(body)
+    parsed = yaml.safe_load(_render())
 
     user = parsed["users"][0]
     assert user["name"] == "lab"
@@ -163,10 +159,41 @@ def test_user_data_carries_the_user_and_keys():
     assert "NOPASSWD" in user["sudo"]
     # Proxmox supplies the hostname in the user-data this file replaces.
     assert parsed["hostname"] == "sandbox"
+
+    files = {f["path"]: f["content"] for f in parsed["write_files"]}
     # The console has to log in on its own: there is no password to type.
-    autologin = parsed["write_files"][0]
-    assert "serial-getty@ttyS0" in autologin["path"]
-    assert "--autologin lab" in autologin["content"]
+    autologin = next(v for k, v in files.items() if "serial-getty@ttyS0" in k)
+    assert "--autologin lab" in autologin
+
+
+def _render() -> str:
+    from provision.commands.sandbox import USER_DATA
+
+    return USER_DATA.format(
+        username="lab",
+        keys="\n".join(f"      - {k}" for k in ["ssh-ed25519 AAAAkey1", "ssh-ed25519 AAAAkey2"]),
+        ip="10.0.0.22", prefix=24, gateway="10.0.0.1", dns="10.0.0.1",
+    )
+
+
+def test_user_data_owns_the_network_config():
+    """Netplan's [Match] carries Name=eth0 while the NIC is really ens18.
+
+    Nothing matches, the interface ends up unmanaged, and it never recovers
+    from a carrier drop. Matching en* is what makes `sandbox online` work
+    without a reboot, so it must not regress into name-based matching.
+    """
+    yaml = pytest.importorskip("yaml")
+
+    parsed = yaml.safe_load(_render())
+    files = {f["path"]: f["content"] for f in parsed["write_files"]}
+    network = next(v for k, v in files.items() if k.endswith(".network"))
+
+    assert "Name=en*" in network
+    assert "Address=10.0.0.22/24" in network
+    assert "Gateway=10.0.0.1" in network
+    # Without this the address is flushed on `offline` and never comes back.
+    assert "IgnoreCarrierLoss=yes" in network
 
 
 def test_net_string_marks_the_link_down():

@@ -321,9 +321,27 @@ def _apply_direct(path, kinds: set[str] | None = None) -> bool:
 
     ok, err = try_run(["kubectl", "apply", "-f", "-"], input_text=text,
                       capture=True, echo=False)
-    if not ok:
-        warn(f"apply of {path.name} failed: {err.strip()[:300]}")
-    return ok
+    if ok:
+        return True
+
+    lines = [line for line in err.splitlines() if line.strip()]
+    real = [line for line in lines if not line.lstrip().startswith("Warning:")]
+
+    if not real:
+        # Nothing but warnings. The coredns ConfigMap produces one every single
+        # time — Talos creates it as an inline manifest, so it can never carry
+        # the last-applied-configuration annotation kubectl wants — and calling
+        # that a failed apply sends you hunting for a problem that is not
+        # there. Worse, it trains you to ignore the line that matters when an
+        # apply really does fail.
+        return True
+
+    # The real cause is usually the last thing kubectl says, not the first:
+    # truncating the head of stderr showed the coredns warning and hid it.
+    warn(f"apply of {path.name} failed:")
+    for line in real[-8:]:
+        warn(f"  {line[:200]}")
+    return False
 
 
 def _gitea_running() -> bool:

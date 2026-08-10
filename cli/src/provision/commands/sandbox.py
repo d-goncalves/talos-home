@@ -86,9 +86,34 @@ write_files:
       [Service]
       ExecStart=
       ExecStart=-/sbin/agetty --autologin {username} --noclear --keep-baud 115200,38400,9600 %I $TERM
+  # Own the network outright rather than patching what cloud-init generates.
+  #
+  # Proxmox writes its network-config against the interface name `eth0`, but
+  # this image names the NIC `ens18`. The rename that would reconcile them
+  # lives in a .link file, and .link files only apply when udev first sees the
+  # device -- by the time cloud-init writes one, that moment has passed. So
+  # netplan's [Match] carries Name=eth0, matches nothing, and the interface
+  # ends up *unmanaged*: fine at first boot because cloud-init configures it
+  # directly, but nothing reconfigures it after a carrier event.
+  #
+  # Matching en* sidesteps the naming entirely, and 05- sorts ahead of
+  # netplan's 10- so this wins if both ever match. IgnoreCarrierLoss keeps the
+  # address across `sandbox offline`, so `online` needs no reboot.
+  - path: /etc/systemd/network/05-sandbox.network
+    permissions: '0644'
+    content: |
+      [Match]
+      Name=en*
+      [Network]
+      Address={ip}/{prefix}
+      Gateway={gateway}
+      DNS={dns}
+      IgnoreCarrierLoss=yes
 runcmd:
   - [systemctl, daemon-reload]
   - [systemctl, restart, 'serial-getty@ttyS0.service']
+  - [systemctl, enable, --now, systemd-networkd]
+  - [systemctl, restart, systemd-networkd]
 """
 
 
@@ -128,6 +153,10 @@ def _upload_snippet(box: settings.Sandbox) -> str | None:
     body = USER_DATA.format(
         username=box.username,
         keys="\n".join(f"      - {key}" for key in keys),
+        ip=box.ip,
+        prefix=box.subnet_prefix,
+        gateway=box.gateway,
+        dns=" ".join(box.nameservers) if box.nameservers else box.gateway,
     )
     result = subprocess.run(
         ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", f"{user}@{host}",
@@ -438,15 +467,14 @@ def sandbox_offline() -> None:
 
 
 @sandbox.command("online")
-@click.option("--reboot", is_flag=True, help="Reboot so the guest reconfigures its NIC.")
+@click.option("--reboot", is_flag=True, help="Reboot as well, if the guest does not recover.")
 def sandbox_online(reboot: bool) -> None:
     """Reconnect the sandbox to the network.
 
-    Reconnecting the cable is not enough on its own. Ubuntu configures the
-    static address through systemd-networkd, which flushes it when the carrier
-    drops and does not put it back when the carrier returns — so the link comes
-    up and the guest still has no address. --reboot is the deterministic fix;
-    otherwise run `sudo netplan apply` on the console.
+    The guest keeps its address across the carrier drop (IgnoreCarrierLoss in
+    the cloud-init snippet), so it answers again a few seconds after the link
+    returns. --reboot is there for a guest that has been reconfigured by hand
+    into some state this cannot recover from.
     """
     api, box = _cfg()
     _require_vm(api, box)
@@ -458,12 +486,10 @@ def sandbox_online(reboot: bool) -> None:
         return
 
     if reboot:
-        info("rebooting so the guest reconfigures")
+        info("rebooting")
         api.wait(api.post(f"/nodes/{api.node}/qemu/{box.vm_id}/status/reboot"), what="reboot")
-        success(f"rebooted — {box.ip} should answer shortly")
-    else:
-        warn(f"the guest will not have an address until it reconfigures {box.ip}")
-        warn("run `sudo netplan apply` on the console, or re-run with --reboot")
+
+    info(f"{box.ip} should answer within a few seconds")
 
 
 # ── payload ─────────────────────────────────────────────────────────────────
