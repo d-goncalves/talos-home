@@ -73,6 +73,9 @@ kubernetes/
   apps/            # user-facing applications (kustomization.yaml is generated)
   infrastructure/  # cluster-level components (Tailscale operator, NFS CSI, ESO)
   flux/            # FluxCD bootstrap (GitRepository + Kustomizations)
+ansible/
+  site.yml         # configures the Pi-hole containers (inventory.yml is generated)
+  roles/pihole/    # unbound, upstreams, local DNS, blocklists, admin password
 scripts/
   recover.sh       # bare-machine bootstrap: install tools, clone repo, hand off
   deploy-gitea.sh  # Gitea helm deploy (not a Flux HelmRelease — see the script)
@@ -81,6 +84,7 @@ docs/
   inventory.md     # what is running, what is pinned, and what still floats
   upgrading.md     # Flux, Talos and Postgres — the things Renovate does not touch
   proxmox.md       # preparing a host: API token, storage, SSH
+  pihole.md        # DNS for the tailnet, and why the container is not in Terraform
   draw_arch.py     # generates architecture.png (requires pip install -r docs/requirements.txt)
   architecture.png # rendered diagram
 ```
@@ -239,6 +243,11 @@ authorization header, event `pull_request`, and ntfy templating in the query
 string (`tpl=yes`, plus `title`, `message`, `click`, `priority`).
 `ALLOWED_HOST_LIST` in `kubernetes/apps/gitea/values.yaml` is what permits
 Gitea to call an in-cluster address at all.
+
+Pi-hole is the second. Its container is deliberately never recreated: the
+tailnet nameserver list points at its Tailscale address, so a rebuilt container
+gets a new identity and every device loses DNS — including away from home. See
+[docs/pihole.md](docs/pihole.md).
 
 ### After the NAS restarts
 

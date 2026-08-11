@@ -13,8 +13,8 @@ from ..shell import CommandError
 def sync() -> None:
     """Regenerate everything provision.toml drives.
 
-    Writes terraform/terraform.tfvars.json and
-    kubernetes/apps/kustomization.yaml. Safe to run any time.
+    Writes terraform/terraform.tfvars.json, kubernetes/apps/kustomization.yaml
+    and ansible/inventory.yml. Safe to run any time.
     """
     unfilled = settings.unfilled()
     if unfilled:
@@ -35,6 +35,12 @@ def sync() -> None:
         success("wrote kubernetes/apps/kustomization.yaml")
     else:
         info("kubernetes/apps/kustomization.yaml already up to date")
+
+    if settings.pihole_hosts():
+        if settings.write_inventory():
+            success("wrote ansible/inventory.yml")
+        else:
+            info("ansible/inventory.yml already up to date")
 
     if not unfilled:
         if settings.write_tfvars():

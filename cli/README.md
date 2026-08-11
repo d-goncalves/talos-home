@@ -67,6 +67,7 @@ can plan a change against the cluster.
 | `plan` `apply` `destroy` `init` `output` | Terraform lifecycle |
 | `preflight` | Tooling, 1Password sign-in, `provision.toml` completeness |
 | `apps list\|enable\|disable\|protect\|check\|diff\|storage\|vars` | Which apps run — see below |
+| `pihole check\|apply` | Pi-hole containers and their config — see [docs/pihole.md](../docs/pihole.md) |
 | `secrets list\|check` | What 1Password must hold, and whether it does |
 | `config write\|show` | Writes `~/.talos/config` and `~/.kube/config` |
 | `bootstrap secrets\|gitea\|flux\|all` | Cluster secrets, Gitea, Flux handoff |

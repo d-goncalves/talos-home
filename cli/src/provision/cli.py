@@ -26,6 +26,7 @@ from .commands.bootstrap import bootstrap
 from .commands.config import config
 from .commands.lifecycle import apply, check, destroy, init, output, plan, sync, up
 from .commands.nas import nas
+from .commands.pihole import pihole
 from .commands.preflight import preflight
 from .commands.sandbox import sandbox
 from .commands.secrets import secrets
@@ -89,6 +90,7 @@ homelab.add_command(init)
 homelab.add_command(apps)
 homelab.add_command(secrets)
 homelab.add_command(nas)
+homelab.add_command(pihole)
 homelab.add_command(storage)
 homelab.add_command(config)
 homelab.add_command(bootstrap)

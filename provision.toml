@@ -150,3 +150,39 @@ bridge       = "vmbr0"
 username     = "lab"
 # Ubuntu's cloud image. `current` tracks the latest point release of 24.04 LTS.
 image_url    = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Pi-hole
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# DNS for the tailnet, not just the LAN: the container joins Tailscale and its
+# tailnet address is what devices resolve against — see tailnet_nameservers
+# below. That is also why it is never recreated. A rebuilt container gets a new
+# Tailscale identity, and DNS breaks on every device until the nameserver list
+# is updated to match.
+#
+# Terraform declares the container; Ansible configures what runs inside it:
+#     ./provision homelab pihole apply
+[pihole]
+enabled = true
+
+# One entry per Pi-hole. The list is a group, so a second instance is a second
+# entry here and nothing else — both converge on the same declared config, so
+# Ansible is the sync mechanism and no replication tool is needed.
+#
+# Two would remove the "DNS is down while I patch it" window. On a single
+# Proxmox host it is not yet HA against the host itself.
+[[pihole.hosts]]
+name    = "pihole"
+vmid    = 101
+# Reachable over the tailnet, so Ansible does not depend on the LAN address.
+ansible_host = "pihole.<tailnet>.ts.net"
+# The address devices actually resolve against — Terraform publishes this as
+# the tailnet nameserver. Stable for the life of the container's Tailscale
+# identity, which is the reason the container is never recreated.
+tailscale_ip = "100.78.68.92"
+# Must sit inside the 192.168.1.20-29 range reserved for these machines.
+ip      = "192.168.1.23"
+memory  = 512
+swap    = 512
+cores   = 1

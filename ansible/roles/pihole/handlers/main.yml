@@ -1,0 +1,13 @@
+---
+- name: Restart unbound
+  ansible.builtin.service:
+    name: unbound
+    state: restarted
+
+# FTL rereads pihole.toml on restart. Config written through
+# `pihole-FTL --config` applies immediately, so this only fires for the
+# handful of things that do not.
+- name: Restart pihole-FTL
+  ansible.builtin.service:
+    name: pihole-FTL
+    state: restarted

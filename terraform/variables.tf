@@ -213,3 +213,16 @@ variable "unifi_network_id" {
   type        = string
   default     = ""
 }
+
+variable "tailnet_nameservers" {
+  description = <<-EOT
+    Tailnet-wide DNS servers, in preference order — the Pi-hole containers'
+    tailnet addresses. Generated from [[pihole.hosts]] in provision.toml.
+
+    This is what devices actually resolve against. An empty list hands DNS back
+    to Tailscale's default resolvers rather than disabling DNS, but it does
+    switch off Pi-hole's filtering for every device at once.
+  EOT
+  type        = list(string)
+  default     = []
+}

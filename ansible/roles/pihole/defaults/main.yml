@@ -1,0 +1,33 @@
+---
+# unbound, as the box already has it. Overridable per group if a second
+# instance ever needs different upstreams.
+unbound_port: 5335
+unbound_rrset_cache_size: 256m
+unbound_msg_cache_size: 128m
+
+# Answers for RFC1918 space are dropped, so an upstream cannot point a public
+# name at something inside the LAN.
+unbound_private_addresses:
+  - 192.168.0.0/16
+  - 169.254.0.0/16
+  - 172.16.0.0/12
+  - 10.0.0.0/8
+  - fd00::/8
+  - fe80::/10
+
+# DNS-over-TLS. The name after # is verified against the certificate, so it is
+# load-bearing, not a comment.
+#
+# The v6 entries are inert while do-ip6 is no, and kept so that turning IPv6 on
+# does not silently halve the upstream set.
+#
+# Alternatives, should Google not be the preferred upstream:
+#   Cloudflare  1.1.1.1@853#cloudflare-dns.com  1.0.0.1@853#cloudflare-dns.com
+#   Quad9       9.9.9.9@853#dns.quad9.net       149.112.112.112@853#dns.quad9.net
+unbound_forwarders:
+  - 8.8.8.8@853#dns.google
+  - 8.8.4.4@853#dns.google
+  - 2001:4860:4860::8888@853#dns.google
+  - 2001:4860:4860::8844@853#dns.google
+
+pihole_gravity_db: /etc/pihole/gravity.db

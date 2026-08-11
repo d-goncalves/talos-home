@@ -1,0 +1,65 @@
+---
+# What every Pi-hole should hold. Applied to all hosts in the group, so two
+# instances converge here rather than one replicating the other's drift —
+# which is why no separate sync tool (orbital-sync and friends) is needed.
+
+# ── Upstream resolution ──────────────────────────────────────────────────────
+#
+# 127.0.0.1#5335 is the local unbound below, which forwards over DNS-over-TLS.
+#
+# ⚠ 1.0.0.1 and 1.1.1.1 sit alongside it as *plain* DNS, and FTL spreads
+#   queries across all three — so a good share of lookups bypass the encrypted
+#   path entirely. That is how the box was found, and it is recorded rather
+#   than silently changed. Drop the two Cloudflare entries to make every query
+#   go through unbound; keep them if you would rather DNS survive unbound
+#   failing.
+pihole_upstreams:
+  - 127.0.0.1#5335
+  - 1.0.0.1
+  - 1.1.1.1
+
+# ── Local DNS ────────────────────────────────────────────────────────────────
+#
+# Infrastructure that is not on the tailnet, so MagicDNS gives it no name.
+# Addresses come from the inventory, which is generated from provision.toml —
+# so the gateway and NAS are not written down twice.
+pihole_records:
+  - "{{ proxmox_ip }} pve"
+  - "{{ nas_ip }} nas"
+  - "{{ lan_gateway }} router"
+
+pihole_cnames: []
+
+# ── Blocking ─────────────────────────────────────────────────────────────────
+pihole_adlists:
+  - https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+
+# ── Behaviour ────────────────────────────────────────────────────────────────
+# Bare `pihole-FTL --config` on the host lists every available key.
+pihole_settings:
+  dns.upstreams: "{{ pihole_upstreams }}"
+  dns.hosts: "{{ pihole_records }}"
+  dns.cnameRecords: "{{ pihole_cnames }}"
+  # The router runs DHCP. Two DHCP servers on one LAN is a bad afternoon.
+  dhcp.active: false
+  # Answer on every interface: queries arrive over tailscale0, not just eth0.
+  dns.listeningMode: ALL
+
+# Keys this role manages on the container itself.
+pihole_manage_unbound: true
+pihole_manage_authorized_keys: true
+
+# Public keys, so committing them leaks nothing. These are what `provision`
+# already puts on the sandbox; keeping one list means one place to revoke.
+pihole_authorized_keys: []
+
+# ── Admin password ───────────────────────────────────────────────────────────
+#
+# Read from 1Password on the control node at run time, the same way Terraform
+# reads its credentials: nothing is stored here, and rotating means changing
+# the item and re-running. Evaluated lazily, so a host that skips the password
+# tasks never invokes `op` at all.
+#
+# Rotating it: update the item, run `./provision homelab pihole apply`.
+pihole_web_password: >-
+  {{ lookup('pipe', 'op read "op://Server Infrastructure/Pihole/password"') }}

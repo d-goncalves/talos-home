@@ -1,0 +1,51 @@
+# Managed by Ansible. Local edits are overwritten.
+#
+# unbound sits in front of Pi-hole on 127.0.0.1#5335 and forwards over
+# DNS-over-TLS rather than doing full recursion — so the upstream sees the
+# queries, but nobody in between does.
+server:
+  verbosity: 0
+  interface: 127.0.0.1
+  port: {{ unbound_port }}
+  do-ip6: no
+  do-ip4: yes
+  do-udp: yes
+  do-tcp: yes
+  num-threads: 1
+  hide-identity: yes
+  hide-version: yes
+  harden-glue: yes
+  harden-dnssec-stripped: yes
+  harden-referral-path: yes
+  use-caps-for-id: no
+  harden-algo-downgrade: no
+  qname-minimisation: yes
+  aggressive-nsec: yes
+  rrset-roundrobin: yes
+  cache-min-ttl: 300
+  cache-max-ttl: 14400
+  msg-cache-slabs: 8
+  rrset-cache-slabs: 8
+  infra-cache-slabs: 8
+  key-cache-slabs: 8
+  serve-expired: yes
+  serve-expired-ttl: 3600
+  edns-buffer-size: 1232
+  prefetch: yes
+  prefetch-key: yes
+  target-fetch-policy: "3 2 1 1 1"
+  unwanted-reply-threshold: 10000000
+  rrset-cache-size: {{ unbound_rrset_cache_size }}
+  msg-cache-size: {{ unbound_msg_cache_size }}
+  so-rcvbuf: 1m
+{% for net in unbound_private_addresses %}
+  private-address: {{ net }}
+{% endfor %}
+  tls-cert-bundle: "/etc/ssl/certs/ca-certificates.crt"
+forward-zone:
+  name: "."
+  forward-tls-upstream: yes
+  forward-first: no
+{% for addr in unbound_forwarders %}
+  forward-addr: {{ addr }}
+{% endfor %}

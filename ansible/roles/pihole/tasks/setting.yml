@@ -1,0 +1,31 @@
+---
+# One Pi-hole config key: read it, and write only if it actually differs.
+#
+# The read and the compare are what make this a drift check rather than a
+# blind write — `pihole-FTL --config` prints values in its own format and
+# accepts JSON, so comparing the raw strings would report changed forever.
+# See ansible/filter_plugins/pihole.py.
+- name: "Read {{ setting.key }}"
+  ansible.builtin.command: "pihole-FTL --config {{ setting.key }}"
+  register: pihole_setting_current
+  changed_when: false
+  check_mode: false
+
+# Recorded separately from the write below because `command` cannot run under
+# --check: the write is always skipped there, so without this a check run would
+# report "nothing to do" no matter how far out of date the host was.
+- name: "Record drift on {{ setting.key }}"
+  ansible.builtin.set_fact:
+    pihole_drift: >-
+      {{ pihole_drift + [setting.key ~ ': ' ~ pihole_setting_current.stdout | trim
+         ~ '  ->  ' ~ setting.value | to_json] }}
+  when: not (pihole_setting_current.stdout | pihole_matches(setting.value))
+
+- name: "Set {{ setting.key }}"
+  ansible.builtin.command:
+    argv:
+      - pihole-FTL
+      - --config
+      - "{{ setting.key }}"
+      - "{{ setting.value | to_json }}"
+  when: not (pihole_setting_current.stdout | pihole_matches(setting.value))

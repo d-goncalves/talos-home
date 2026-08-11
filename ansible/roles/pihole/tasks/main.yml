@@ -1,0 +1,163 @@
+---
+# This role configures an existing Pi-hole v6 install. It does not install
+# Pi-hole: the container is declared in terraform/pihole.tf and is deliberately
+# never recreated, because a rebuild means a new Tailscale identity and DNS
+# breaks on every device until the nameserver list is updated to match.
+- name: Start with no recorded drift
+  ansible.builtin.set_fact:
+    pihole_drift: []
+
+- name: Confirm this is a Pi-hole v6 host
+  ansible.builtin.command: pihole-FTL --version
+  register: pihole_version
+  changed_when: false
+  check_mode: false
+  failed_when: pihole_version.rc != 0 or not pihole_version.stdout.startswith('v6')
+
+- name: Manage root authorized_keys
+  ansible.posix.authorized_key:
+    user: root
+    key: "{{ pihole_authorized_keys | join('\n') }}"
+    exclusive: true
+  when:
+    - pihole_manage_authorized_keys | bool
+    - pihole_authorized_keys | length > 0
+
+# ── unbound ──────────────────────────────────────────────────────────────────
+
+- name: Install unbound
+  ansible.builtin.apt:
+    name: unbound
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  when: pihole_manage_unbound | bool
+
+- name: Write the unbound config
+  ansible.builtin.template:
+    src: unbound-pi-hole.conf.j2
+    dest: /etc/unbound/unbound.conf.d/pi-hole.conf
+    owner: root
+    group: root
+    mode: "0644"
+    # A malformed config leaves unbound dead and Pi-hole with no upstream, so
+    # refuse to write one rather than restart into it.
+    validate: unbound-checkconf %s
+  when: pihole_manage_unbound | bool
+  notify: Restart unbound
+
+- name: Enable unbound
+  ansible.builtin.service:
+    name: unbound
+    enabled: true
+    state: started
+  when: pihole_manage_unbound | bool
+
+# Handlers run at the end of the play by default, but the settings below point
+# Pi-hole at unbound — so it has to be answering before that happens.
+- name: Apply unbound changes now
+  ansible.builtin.meta: flush_handlers
+
+# ── Pi-hole settings ─────────────────────────────────────────────────────────
+
+- name: Converge Pi-hole settings
+  ansible.builtin.include_tasks: setting.yml
+  loop: "{{ pihole_settings | dict2items }}"
+  loop_control:
+    loop_var: setting
+    label: "{{ setting.key }}"
+
+# ── Blocklists ───────────────────────────────────────────────────────────────
+
+- name: Read the configured adlists
+  ansible.builtin.command: >-
+    pihole-FTL sqlite3 {{ pihole_gravity_db }}
+    "select address from adlist where enabled = 1;"
+  register: pihole_current_adlists
+  changed_when: false
+  check_mode: false
+
+- name: Add missing adlists
+  ansible.builtin.command: >-
+    pihole-FTL sqlite3 {{ pihole_gravity_db }}
+    "insert or ignore into adlist (address, enabled, comment)
+     values ('{{ item }}', 1, 'managed by ansible');"
+  loop: "{{ pihole_adlists | difference(pihole_current_adlists.stdout_lines) }}"
+  register: pihole_adlists_added
+
+- name: Disable adlists that are no longer declared
+  # Disabled rather than deleted: the row carries the download history, and a
+  # list removed by mistake is then one flag away from coming back.
+  ansible.builtin.command: >-
+    pihole-FTL sqlite3 {{ pihole_gravity_db }}
+    "update adlist set enabled = 0 where address = '{{ item }}';"
+  loop: "{{ pihole_current_adlists.stdout_lines | difference(pihole_adlists) }}"
+  register: pihole_adlists_removed
+
+- name: Rebuild gravity
+  # Only when the list set actually moved: this re-downloads every list and
+  # takes a while.
+  ansible.builtin.command: pihole -g
+  when: pihole_adlists_added is changed or pihole_adlists_removed is changed
+  changed_when: true
+
+# ── Admin password ───────────────────────────────────────────────────────────
+
+- name: Check whether the admin password already matches
+  # There is no way to read the password back, so this asks the API to accept
+  # it. Cheap, and it makes the task idempotent instead of always-changed.
+  ansible.builtin.uri:
+    url: http://127.0.0.1/api/auth
+    method: POST
+    body_format: json
+    body:
+      password: "{{ pihole_web_password }}"
+    status_code: [200, 401]
+  register: pihole_auth
+  changed_when: false
+  # Read-only, so it runs under --check too. Without this the check run skips
+  # it and every task below has no status to test.
+  check_mode: false
+  no_log: true
+
+- name: Note whether the password was accepted
+  # Deliberately not the HTTP status: a *wrong* password also returns 200, with
+  # session.valid true and the reason buried in session.message. Only a
+  # non-null sid means the password was actually right, so keying on the status
+  # would silently never set it.
+  ansible.builtin.set_fact:
+    pihole_password_ok: "{{ (pihole_auth.json.session.sid | default(none)) is not none }}"
+
+- name: Set the admin password
+  ansible.builtin.command:
+    argv:
+      - pihole
+      - setpassword
+      - "{{ pihole_web_password }}"
+  when: not pihole_password_ok
+  no_log: true
+
+- name: Close the session opened by the check
+  # max_sessions defaults to 16, so leaking one per run locks the UI out after
+  # sixteen.
+  ansible.builtin.uri:
+    url: http://127.0.0.1/api/auth
+    method: DELETE
+    headers:
+      sid: "{{ pihole_auth.json.session.sid }}"
+    status_code: [200, 204, 401]
+  when: pihole_password_ok
+  changed_when: false
+  no_log: true
+
+# ── Report ───────────────────────────────────────────────────────────────────
+
+- name: Report settings drift
+  ansible.builtin.debug:
+    msg: "{{ pihole_drift }}"
+  when: pihole_drift | length > 0
+
+- name: Report that settings are in sync
+  ansible.builtin.debug:
+    msg: "Pi-hole settings already match the declared config"
+  when: pihole_drift | length == 0

@@ -63,12 +63,14 @@ jobs:
         run: |
           cd repo && . .ci/bin/activate
           python -m provision homelab sync
-          git diff --quiet -- kubernetes/apps/kustomization.yaml || {
-            echo "::error::kubernetes/apps/kustomization.yaml is out of date."
-            echo "Run './provision homelab sync' and commit the result."
-            git --no-pager diff -- kubernetes/apps/kustomization.yaml
-            exit 1
-          }
+          for f in kubernetes/apps/kustomization.yaml ansible/inventory.yml; do
+            git diff --quiet -- "$f" || {
+              echo "::error::$f is out of date."
+              echo "Run './provision homelab sync' and commit the result."
+              git --no-pager diff -- "$f"
+              exit 1
+            }
+          done
 
       - name: Persistent data survives a rebuild
         run: |
