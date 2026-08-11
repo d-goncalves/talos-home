@@ -18,7 +18,10 @@ jobs:
     steps:
       - name: Tooling
         run: |
-          apk add --no-cache python3 py3-pip git >/dev/null
+          # --upgrade matters: the image ships an expat older than the python3
+          # apk installs, and pyexpat then fails to relocate at import time —
+          # which surfaces as a pip traceback rather than anything obvious.
+          apk add --no-cache --upgrade expat python3 py3-pip git >/dev/null
           python3 --version
 
       - name: Clone
