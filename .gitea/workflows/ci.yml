@@ -69,3 +69,4 @@ jobs:
             echo "building $overlay"
             kustomize build "$overlay" >/dev/null
           done
+
