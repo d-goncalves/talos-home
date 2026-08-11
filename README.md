@@ -79,6 +79,7 @@ scripts/
 docs/
   rotate.md        # how to rotate every secret, and what needs re-applying
   inventory.md     # what is running, what is pinned, and what still floats
+  todo.md          # what is left, and what is deliberately not being done
   proxmox.md       # preparing a host: API token, storage, SSH
   draw_arch.py     # generates architecture.png (requires pip install -r docs/requirements.txt)
   architecture.png # rendered diagram
