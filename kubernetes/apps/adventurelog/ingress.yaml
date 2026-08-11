@@ -17,6 +17,17 @@ spec:
   rules:
     - http:
         paths:
+          # Uploaded images are written by the backend and served by it, but
+          # the frontend only proxies /api and /auth — so a stored photo came
+          # back as a SvelteKit 404 even though the file was on the NFS and the
+          # backend served it happily on :8000. Must stay ahead of the catch-all.
+          - path: /media
+            pathType: Prefix
+            backend:
+              service:
+                name: adventurelog-backend
+                port:
+                  number: 8000
           - path: /
             pathType: Prefix
             backend:
