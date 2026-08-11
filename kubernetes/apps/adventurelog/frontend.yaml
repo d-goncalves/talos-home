@@ -17,7 +17,9 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/seanmorley15/adventurelog-frontend:latest
+          # Pinned by digest for the same reason as the backend, which it is
+          # released alongside and must stay in step with.
+          image: ghcr.io/seanmorley15/adventurelog-frontend:latest@sha256:31b8bd7d7528485046bb55559b6d3343d693960de4d62ff39cab492e48093fb0
           env:
             - name: ORIGIN
               value: https://adventurelog.${TAILNET_DOMAIN}
