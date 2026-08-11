@@ -21,14 +21,24 @@ from ..shell import require, run
 
 @click.group("pihole")
 def pihole() -> None:
-    """Configure the Pi-hole DNS servers."""
+    """DNS for the tailnet: the Pi-hole containers and their config.
+
+    \b
+      ./provision pihole check          containers vs provision.toml
+      ./provision pihole apply --check  config drift, changes nothing
+      ./provision pihole apply          converge
+
+    The tailnet nameserver list is Terraform's, and Terraform is one state
+    under talos/ — so that part is `./provision homelab apply`. See
+    pihole/README.md.
+    """
 
 
 @pihole.command("apply")
 @click.option("--check", is_flag=True, help="Report drift without changing anything.")
 @click.option("--limit", default=None, help="Restrict to one host from the group.")
 def pihole_apply(check: bool, limit: str | None) -> None:
-    """Converge every declared Pi-hole on ansible/group_vars/pihole.yml."""
+    """Converge every declared Pi-hole on ansible/group_vars/piholes.yml."""
     hosts = settings.pihole_hosts()
     if not hosts:
         fail("provision.toml has no enabled [pihole] section")

@@ -43,17 +43,25 @@ from .shell import CommandError
 def cli() -> None:
     """Provision and manage this homelab.
 
+    Three things share a Proxmox host and nothing else, so each gets its own
+    command group, matching the directory that holds it.
+
     \b
-    The cluster:
+    homelab   the Talos cluster            talos/
       ./provision homelab up          a machine from scratch, end to end
       ./provision homelab check       anything pending?
       ./provision homelab apps disable adventurelog
 
     \b
-    A throwaway VM for untrusted packages:
+    sandbox   a throwaway VM              sandbox/
       ./provision sandbox new
       ./provision sandbox offline
       ./provision sandbox destroy
+
+    \b
+    pihole    DNS for the tailnet         pihole/
+      ./provision pihole check        containers vs provision.toml
+      ./provision pihole apply        converge the config
     """
 
 
@@ -90,7 +98,6 @@ homelab.add_command(init)
 homelab.add_command(apps)
 homelab.add_command(secrets)
 homelab.add_command(nas)
-homelab.add_command(pihole)
 homelab.add_command(storage)
 homelab.add_command(config)
 homelab.add_command(bootstrap)
@@ -102,6 +109,7 @@ homelab.add_command(status)
 
 cli.add_command(homelab)
 cli.add_command(sandbox)
+cli.add_command(pihole)
 
 
 def main() -> None:

@@ -66,11 +66,11 @@ AdventureLog login failed against a password that was provably correct.
 Affects: **AdventureLog**, **Gitea**, **Grafana**, **ntfy**.
 
 **Pi-hole is the exception that is handled for you.** Update the `Pihole` item
-and run `./provision homelab pihole apply` — the playbook checks whether the
+and run `./provision pihole apply` — the playbook checks whether the
 password is already accepted and sets it when it is not:
 
 ```bash
-./provision homelab pihole apply
+./provision pihole apply
 ```
 
 Rotate the 1Password item, then reset it inside the app as well. For

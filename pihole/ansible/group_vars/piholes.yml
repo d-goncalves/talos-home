@@ -60,6 +60,6 @@ pihole_authorized_keys: []
 # the item and re-running. Evaluated lazily, so a host that skips the password
 # tasks never invokes `op` at all.
 #
-# Rotating it: update the item, run `./provision homelab pihole apply`.
+# Rotating it: update the item, run `./provision pihole apply`.
 pihole_web_password: >-
   {{ lookup('pipe', 'op read "op://Server Infrastructure/Pihole/password"') }}

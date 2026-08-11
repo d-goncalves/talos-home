@@ -51,11 +51,14 @@ run on a schedule as a drift check.
 
 ## Commands
 
-Two groups. `homelab` is the Talos cluster, driven by Terraform and Flux;
-`sandbox` is a throwaway VM, driven straight through the Proxmox API. They
-share the config loader, 1Password access and the console helpers, and nothing
-else — in particular the sandbox has no Terraform state, so no sandbox command
-can plan a change against the cluster.
+Three groups, one per project directory: `homelab` is the Talos cluster in
+`talos/`, driven by Terraform and Flux; `sandbox` is a throwaway VM in
+`sandbox/`, driven straight through the Proxmox API; `pihole` is DNS for the
+tailnet in `pihole/`, driven by Ansible.
+
+They share the config loader, 1Password access, the Proxmox client and the
+console helpers, and nothing else — in particular the sandbox has no Terraform
+state, so no sandbox command can plan a change against the cluster.
 
 ### `provision homelab`
 
@@ -67,12 +70,23 @@ can plan a change against the cluster.
 | `plan` `apply` `destroy` `init` `output` | Terraform lifecycle |
 | `preflight` | Tooling, 1Password sign-in, `provision.toml` completeness |
 | `apps list\|enable\|disable\|protect\|check\|diff\|storage\|vars` | Which apps run — see below |
-| `pihole check\|apply` | Pi-hole containers and their config — see [docs/pihole.md](../pihole/README.md) |
 | `secrets list\|check` | What 1Password must hold, and whether it does |
 | `config write\|show` | Writes `~/.talos/config` and `~/.kube/config` |
 | `bootstrap secrets\|gitea\|flux\|all` | Cluster secrets, Gitea, Flux handoff |
 | `state backup\|restore\|status` | Terraform state ↔ 1Password document |
 | `status` | Cluster state; `--deep` also runs `talosctl health` |
+
+### `provision pihole`
+
+| Command | Does |
+|---|---|
+| `check` | Live containers vs `provision.toml`; reports, never corrects |
+| `apply` | Converge the config; `--check` for drift, `--limit` for one host |
+
+The tailnet nameserver list is a Terraform resource, and Terraform is one state
+under `talos/` — so that part is `provision homelab apply`. See
+[pihole/README.md](../pihole/README.md) for why the containers themselves are
+deliberately not Terraform-managed.
 
 ### `provision sandbox`
 

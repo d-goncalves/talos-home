@@ -162,7 +162,7 @@ image_url    = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloud
 # is updated to match.
 #
 # Terraform declares the container; Ansible configures what runs inside it:
-#     ./provision homelab pihole apply
+#     ./provision pihole apply
 [pihole]
 enabled = true
 

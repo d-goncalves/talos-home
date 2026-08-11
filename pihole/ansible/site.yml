@@ -1,7 +1,7 @@
 ---
-# Converge every declared Pi-hole on the config in group_vars/pihole.yml.
+# Converge every declared Pi-hole on the config in group_vars/piholes.yml.
 #
-# Run with `./provision homelab pihole apply`, which reads the admin password
+# Run with `./provision pihole apply`, which reads the admin password
 # out of 1Password and passes it in. Running ansible-playbook directly works
 # too, as long as pihole_web_password is supplied.
 - name: Configure Pi-hole

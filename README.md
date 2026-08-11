@@ -83,19 +83,27 @@ docs/              # what spans all three
   architecture.png # rendered diagram
 ```
 
-## Two stacks
+## Three stacks
 
-`./provision` manages two things that share a Proxmox host and nothing else:
+`./provision` manages three things that share a Proxmox host and nothing else.
+One command group each, named after the directory that holds it:
 
-| | `provision homelab` | `provision sandbox` |
-|---|---|---|
-| what | the Talos cluster and its apps | a throwaway Ubuntu VM |
-| driven by | Terraform + Flux | the Proxmox API, directly |
-| state | `terraform.tfstate`, backed up to 1Password | none |
-| lifetime | months | minutes |
+| | `provision homelab` | `provision sandbox` | `provision pihole` |
+|---|---|---|---|
+| directory | `talos/` | `sandbox/` | `pihole/` |
+| what | the Talos cluster and its apps | a throwaway Ubuntu VM | DNS for the tailnet |
+| driven by | Terraform + Flux | the Proxmox API, directly | Ansible |
+| state | `terraform.tfstate`, backed up to 1Password | none | none — the container is the state |
+| lifetime | months | minutes | years |
 
 The sandbox holds no Terraform state, so a mistake there cannot plan a change
-against the cluster.
+against the cluster. Pi-hole's container is deliberately not Terraform-managed
+either — see [pihole/README.md](pihole/README.md) — so `provision pihole`
+reports drift rather than correcting it.
+
+Terraform is a single state under `talos/`, including the one resource that is
+really Pi-hole's: the tailnet nameserver list. Splitting state for one resource
+would buy a second init, apply and restore path in recovery.
 
 ## Provisioning
 

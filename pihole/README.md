@@ -6,9 +6,9 @@ that list as the tailnet nameservers. LAN clients go to the router, which is
 why changing the container's LAN address is uneventful.
 
 ```bash
-./provision homelab pihole check          # container spec vs provision.toml
-./provision homelab pihole apply --check  # config drift, changes nothing
-./provision homelab pihole apply          # converge
+./provision pihole check          # container spec vs provision.toml
+./provision pihole apply --check  # config drift, changes nothing
+./provision pihole apply          # converge
 ```
 
 ## Who owns what
@@ -17,7 +17,7 @@ why changing the container's LAN address is uneventful.
 |---|---|---|
 | `provision.toml` `[pihole]` | host list, addresses, container sizing | — |
 | `talos/terraform/tailscale.tf` | which resolvers the tailnet uses | `provision homelab apply` |
-| `ansible/group_vars/piholes.yml` | upstreams, local DNS, blocklists, password | `provision homelab pihole apply` |
+| `ansible/group_vars/piholes.yml` | upstreams, local DNS, blocklists, password | `provision pihole apply` |
 
 The container itself is **not** Terraform-managed, deliberately — see below.
 
