@@ -1,0 +1,71 @@
+# CI on the Gitea runner — the source of truth, rather than the GitHub mirror.
+#
+# Jobs run inside the act_runner container (Alpine), because Talos has no
+# Docker daemon for container jobs. That means no `actions/checkout` (it needs
+# node) and no preinstalled toolchain, so this clones with git and apk-adds
+# what it uses. Installs persist for the life of the runner pod, so only the
+# first run after a restart pays for them.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: self-hosted
+    steps:
+      - name: Tooling
+        run: |
+          apk add --no-cache python3 py3-pip git >/dev/null
+          python3 --version
+
+      - name: Clone
+        run: |
+          git clone --depth 50 "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" repo
+          cd repo && git checkout "$GITHUB_SHA"
+
+      - name: Lint and tests
+        run: |
+          cd repo
+          python3 -m venv .ci && . .ci/bin/activate
+          pip install -q -e ./cli pyflakes pytest PyYAML
+          python -m pyflakes cli/src/provision/
+          pytest cli/tests -q
+
+      - name: Generated files are in sync
+        run: |
+          cd repo && . .ci/bin/activate
+          python -m provision homelab sync
+          git diff --quiet -- kubernetes/apps/kustomization.yaml || {
+            echo "::error::kubernetes/apps/kustomization.yaml is out of date."
+            echo "Run './provision homelab sync' and commit the result."
+            git --no-pager diff -- kubernetes/apps/kustomization.yaml
+            exit 1
+          }
+
+      - name: Persistent data survives a rebuild
+        run: |
+          cd repo && . .ci/bin/activate
+          python -m provision homelab apps storage
+
+      - name: Nothing under kubernetes/ is untracked
+        run: |
+          cd repo
+          untracked="$(git ls-files --others --exclude-standard kubernetes/)"
+          if [ -n "$untracked" ]; then
+            echo "$untracked"
+            echo "::error::untracked files under kubernetes/ — commit them or gitignore them"
+            exit 1
+          fi
+
+      - name: Kustomize builds
+        run: |
+          cd repo
+          wget -qO- https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.5.0/kustomize_v5.5.0_linux_amd64.tar.gz \
+            | tar xz -C /usr/local/bin kustomize
+          for overlay in kubernetes/apps kubernetes/infrastructure kubernetes/flux; do
+            echo "building $overlay"
+            kustomize build "$overlay" >/dev/null
+          done

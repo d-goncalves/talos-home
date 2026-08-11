@@ -1,0 +1,102 @@
+# Gitea Actions runner.
+#
+# CI previously only ran on the GitHub mirror, which lags behind Gitea and had
+# been silently rejected for two days — so no recent commit was ever checked.
+# This runs the same jobs against the source of truth instead.
+#
+# Jobs execute in the runner's own container (host mode), not in Docker: there
+# is no Docker daemon on a Talos node, and giving CI one would mean a
+# privileged pod with access to every image on the host. The trade is that
+# workflows get the tools baked into this image rather than any `container:`
+# they ask for, which is enough for the checks this repo runs.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: act-runner-token
+  namespace: gitea
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword
+    kind: ClusterSecretStore
+  target:
+    name: act-runner-token
+  data:
+    - secretKey: token
+      remoteRef:
+        key: <item-id>/credential # Gitea Actions Runner - talos-home
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: act-runner-config
+  namespace: gitea
+data:
+  config.yaml: |
+    log:
+      level: info
+    runner:
+      capacity: 1
+      timeout: 30m
+      # Jobs run directly in this container. `-self-hosted` maps a label to the
+      # host itself rather than to a Docker image.
+      labels:
+        - "self-hosted:host"
+        - "ubuntu-latest:host"
+    cache:
+      enabled: true
+    container:
+      # No Docker daemon on Talos, so no container job support.
+      network: host
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: act-runner
+  namespace: gitea
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: act-runner
+  template:
+    metadata:
+      labels:
+        app: act-runner
+    spec:
+      containers:
+        - name: runner
+          image: gitea/act_runner:0.2.13
+          env:
+            - name: GITEA_INSTANCE_URL
+              value: http://gitea-http.gitea.svc.cluster.local:3000
+            - name: GITEA_RUNNER_REGISTRATION_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: act-runner-token
+                  key: token
+            - name: GITEA_RUNNER_NAME
+              value: talos-home
+            - name: GITEA_RUNNER_LABELS
+              value: "self-hosted:host,ubuntu-latest:host"
+            - name: CONFIG_FILE
+              value: /config/config.yaml
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: config
+          configMap:
+            name: act-runner-config
+        - name: data
+          emptyDir: {}
