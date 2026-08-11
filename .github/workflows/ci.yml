@@ -8,10 +8,15 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Gitea Actions reads this directory as well, but these jobs assume GitHub's
+# hosted runners (node for actions/checkout, a preinstalled toolchain). On
+# Gitea they fail instantly and re-dispatch in a loop, so skip them there —
+# .gitea/workflows/ci.yml runs the equivalent checks on the self-hosted runner.
 jobs:
   cli:
     name: CLI tests
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.server_url, 'gitea') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,6 +31,7 @@ jobs:
   generated-files:
     name: Generated files are in sync
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.server_url, 'gitea') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -50,6 +56,7 @@ jobs:
   manifests:
     name: Kustomize builds
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.server_url, 'gitea') }}
     steps:
       - uses: actions/checkout@v4
       - name: storage audit
@@ -80,6 +87,7 @@ jobs:
   terraform:
     name: Terraform validate
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.server_url, 'gitea') }}
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
