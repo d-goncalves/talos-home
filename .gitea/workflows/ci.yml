@@ -9,7 +9,9 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    # renovate/** matters: automerge waits for a green run on the branch it
+    # creates, so without this every bump sits there forever looking stuck.
+    branches: [master, "renovate/**"]
   workflow_dispatch:
 
 jobs:
