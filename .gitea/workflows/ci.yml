@@ -22,7 +22,15 @@ jobs:
           # apk installs, and pyexpat then fails to relocate at import time —
           # which surfaces as a pip traceback rather than anything obvious.
           apk add --no-cache --upgrade expat python3 py3-pip git >/dev/null
-          python3 --version
+          # kubectl is not in Alpine's repos, and the storage audit and the
+          # kustomize builds both need it. Skipped when already present, so
+          # only the first run after a runner restart pays for it.
+          if ! command -v kubectl >/dev/null; then
+            wget -qO /usr/local/bin/kubectl \
+              https://dl.k8s.io/release/v1.36.0/bin/linux/amd64/kubectl
+            chmod +x /usr/local/bin/kubectl
+          fi
+          python3 --version && kubectl version --client=true 2>/dev/null | head -1
 
       - name: Clone
         run: |
@@ -66,10 +74,8 @@ jobs:
       - name: Kustomize builds
         run: |
           cd repo
-          wget -qO- https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv5.5.0/kustomize_v5.5.0_linux_amd64.tar.gz \
-            | tar xz -C /usr/local/bin kustomize
           for overlay in kubernetes/apps kubernetes/infrastructure kubernetes/flux; do
             echo "building $overlay"
-            kustomize build "$overlay" >/dev/null
+            kubectl kustomize "$overlay" >/dev/null
           done
 
