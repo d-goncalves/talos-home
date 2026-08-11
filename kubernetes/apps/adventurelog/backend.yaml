@@ -50,6 +50,12 @@ spec:
               value: https://adventurelog.${TAILNET_DOMAIN}
             - name: FRONTEND_URL
               value: https://adventurelog.${TAILNET_DOMAIN}
+            # settings.py defaults DEBUG to true, which renders full tracebacks
+            # — locals, settings names, SQL — to whoever triggers an error.
+            # Media is served by adventurelog-media now, so nothing depends on
+            # DEBUG being on; static files come from WhiteNoise either way.
+            - name: DEBUG
+              value: "false"
             - name: DJANGO_ADMIN_USERNAME
               value: admin
             - name: DJANGO_ADMIN_PASSWORD

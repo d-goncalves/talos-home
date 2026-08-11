@@ -7,4 +7,5 @@ resources:
   - postgres.yaml
   - backend.yaml
   - frontend.yaml
+  - media.yaml
   - ingress.yaml
