@@ -44,6 +44,19 @@ effect. Then pods healthy and 26/26 PVCs bound. Update the counts in
 Once pinned, Renovate takes over — patch and minor merge themselves after CI,
 majors open a PR.
 
+## Upgrading Flux
+
+Not Renovate's job. `kubernetes/flux/flux-system/gotk-components.yaml` is
+generated and carries the CRDs plus all four controllers for one release, so
+they move together:
+
+```bash
+flux install --export > kubernetes/flux/flux-system/gotk-components.yaml
+```
+
+Commit, push, and let Flux apply it — it self-manages via the `flux-system`
+Kustomization. Currently on v2.8.7.
+
 ## Not doing
 
 Recorded so they stop being rediscovered as open questions.
