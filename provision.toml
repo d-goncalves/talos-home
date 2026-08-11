@@ -2,7 +2,7 @@
 #  All configuration for this cluster.
 #
 #  This file is committed. It contains no secrets: those live in 1Password and
-#  are read directly by Terraform (see terraform/secrets.tf) and by External
+#  are read directly by Terraform (see talos/terraform/secrets.tf) and by External
 #  Secrets Operator in-cluster.
 #
 #  Apply changes with:

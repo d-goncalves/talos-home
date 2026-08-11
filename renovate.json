@@ -87,15 +87,15 @@
   ],
   "flux": {
     "fileMatch": [
-      "kubernetes/.+\\.ya?ml$"
+      "talos/kubernetes/.+\\.ya?ml$"
     ]
   },
   "kubernetes": {
     "fileMatch": [
-      "kubernetes/.+\\.ya?ml$"
+      "talos/kubernetes/.+\\.ya?ml$"
     ]
   },
   "ignorePaths": [
-    "kubernetes/flux/flux-system/gotk-components.yaml"
+    "talos/kubernetes/flux/flux-system/gotk-components.yaml"
   ]
 }

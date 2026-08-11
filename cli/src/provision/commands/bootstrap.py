@@ -1,6 +1,6 @@
 """Post-provision cluster bootstrap.
 
-This is the part of scripts/recover.sh that has to happen after the node is up:
+This is the part of talos/scripts/recover.sh that has to happen after the node is up:
 seeding the two secrets that are never stored in git, then handing control to
 Flux.
 """
@@ -14,7 +14,7 @@ import time
 import click
 
 from .. import onepassword as op
-from .. import settings, substitution, tf
+from .. import settings, substitution
 from ..console import fail, info, rule, success, warn
 from ..shell import require, run, try_run
 
@@ -184,13 +184,12 @@ def bootstrap_gitea() -> None:
     """Deploy Gitea via the existing helm script.
 
     Gitea is deliberately not a Flux HelmRelease: Flux sources its GitRepository
-    from Gitea, so Flux owning Gitea would be circular. scripts/deploy-gitea.sh
+    from Gitea, so Flux owning Gitea would be circular. talos/scripts/deploy-gitea.sh
     carries the accumulated workarounds (envsubst for TAILNET_DOMAIN,
     --force-conflicts for the field-manager conflict), so call it rather than
     reimplementing it here.
     """
     require("helm")
-    root = tf.repo_root()
 
     if _gitea_running():
         info("gitea is already running")
@@ -200,10 +199,10 @@ def bootstrap_gitea() -> None:
     # Flux cannot deliver yet — Flux reads from the Gitea this is deploying.
     rule("Gitea prerequisites")
     _ensure_namespace("gitea")
-    _apply_direct(root / "kubernetes" / "apps" / "gitea",
+    _apply_direct(settings.kubernetes_dir() / "apps" / "gitea",
                   kinds={"PersistentVolumeClaim", "Service", "ExternalSecret"})
 
-    script = root / "scripts" / "deploy-gitea.sh"
+    script = settings.scripts_dir() / "deploy-gitea.sh"
     if not script.exists():
         fail(f"not found: {script}")
     rule("Gitea")
@@ -221,11 +220,10 @@ def bootstrap_flux(controllers_only: bool, sync_only: bool) -> None:
     until Gitea is serving the repo it reads from.
     """
     require("kubectl")
-    root = tf.repo_root()
 
     rule("Flux")
     if not sync_only:
-        components = root / "kubernetes" / "flux" / "flux-system" / "gotk-components.yaml"
+        components = settings.kubernetes_dir() / "flux" / "flux-system" / "gotk-components.yaml"
         _kubectl("apply", "-f", str(components))
         info("waiting for the controllers")
         for _ in range(60):
@@ -240,8 +238,8 @@ def bootstrap_flux(controllers_only: bool, sync_only: bool) -> None:
 
     if not controllers_only:
         _kubectl("apply", "-f",
-                 str(root / "kubernetes" / "flux" / "flux-system" / "gotk-sync.yaml"))
-        _kubectl("apply", "-k", str(root / "kubernetes" / "flux" / "kustomizations"))
+                 str(settings.kubernetes_dir() / "flux" / "flux-system" / "gotk-sync.yaml"))
+        _kubectl("apply", "-k", str(settings.kubernetes_dir() / "flux" / "kustomizations"))
         success("Flux pointed at the repo")
 
 
@@ -419,9 +417,8 @@ def bootstrap_all(ctx: click.Context, skip_nas_gate: bool) -> None:
     #    the CSI driver, External Secrets and the Tailscale operator.
     if not _gitea_running():
         rule("Infrastructure (direct, pre-Gitea)")
-        root = tf.repo_root()
-        _apply_direct(root / "kubernetes" / "flux" / "repositories")
-        _apply_direct(root / "kubernetes" / "infrastructure")
+        _apply_direct(settings.kubernetes_dir() / "flux" / "repositories")
+        _apply_direct(settings.kubernetes_dir() / "infrastructure")
         info("waiting for the CSI driver and External Secrets")
         for _ in range(90):
             ok, out = try_run(
@@ -431,7 +428,7 @@ def bootstrap_all(ctx: click.Context, skip_nas_gate: bool) -> None:
             if ok and out.count("True") >= 2:
                 break
             time.sleep(10)
-        _apply_direct(root / "kubernetes" / "infrastructure" / "external-secrets" / "store")
+        _apply_direct(settings.kubernetes_dir() / "infrastructure" / "external-secrets" / "store")
 
     # 3. Gitea, so Flux has something to read.
     ctx.invoke(bootstrap_gitea)

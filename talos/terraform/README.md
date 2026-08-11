@@ -28,7 +28,7 @@ credential is written to any file here. Authenticate with
 ./provision homelab secrets check
 ```
 
-Rotating any of them: [docs/rotate.md](../docs/rotate.md).
+Rotating any of them: [docs/rotate.md](../../docs/rotate.md).
 
 ## Configuration
 

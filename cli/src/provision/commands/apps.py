@@ -60,9 +60,9 @@ def _sync(quiet: bool = False) -> bool:
     present = settings.on_disk()
 
     for name in sorted(present - declared):
-        warn(f"kubernetes/apps/{name}/ exists but is not in provision.toml — ignored")
+        warn(f"talos/kubernetes/apps/{name}/ exists but is not in provision.toml — ignored")
     for name in sorted(declared - present):
-        fail(f"provision.toml declares '{name}' but kubernetes/apps/{name}/ does not exist")
+        fail(f"provision.toml declares '{name}' but talos/kubernetes/apps/{name}/ does not exist")
 
     changed = kustomize.write(apps)
     if not quiet:
@@ -314,7 +314,7 @@ def apps_storage() -> None:
     apps_build = run(["kubectl", "kustomize", str(settings.apps_dir())],
                      capture=True, echo=False)
     infra = run(["kubectl", "kustomize",
-                 str(settings.repo_root() / "kubernetes" / "infrastructure")],
+                 str(settings.kubernetes_dir() / "infrastructure")],
                 capture=True, echo=False)
 
     problems = storage.audit(apps_build) + storage.storage_class_problems(infra)

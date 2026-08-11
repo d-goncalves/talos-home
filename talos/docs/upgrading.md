@@ -9,14 +9,14 @@ dependency bump.
 
 ## Flux
 
-Renovate is switched off for `fluxcd/*`. `kubernetes/flux/flux-system/gotk-components.yaml`
+Renovate is switched off for `fluxcd/*`. `talos/kubernetes/flux/flux-system/gotk-components.yaml`
 is generated and carries the CRDs alongside all four controllers for one
 release, so bumping a single image would leave that controller newer than the
 CRDs it reads and than its three siblings.
 
 ```bash
 brew upgrade fluxcd/tap/flux
-flux install --export > kubernetes/flux/flux-system/gotk-components.yaml
+flux install --export > talos/kubernetes/flux/flux-system/gotk-components.yaml
 ```
 
 The CLI version is what gets written, so upgrade it first. Commit and push, and

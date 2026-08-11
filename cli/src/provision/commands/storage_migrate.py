@@ -485,7 +485,6 @@ def _apply_new_storage() -> bool:
     """
     import yaml as _yaml
 
-    root = settings.repo_root()
     ok, raw_vars = try_run(
         ["kubectl", "get", "secret", "-n", "flux-system", "cluster-vars", "-o", "json"],
         capture=True, echo=False,
@@ -504,8 +503,8 @@ def _apply_new_storage() -> bool:
 
     wanted = {"StorageClass", "PersistentVolume", "PersistentVolumeClaim"}
     docs = []
-    for path in (root / "kubernetes" / "infrastructure" / "nfs-csi",
-                 root / "kubernetes" / "apps"):
+    for path in (settings.kubernetes_dir() / "infrastructure" / "nfs-csi",
+                 settings.apps_dir()):
         for doc in _yaml.safe_load_all(render(path)):
             if doc and doc.get("kind") in wanted:
                 docs.append(doc)

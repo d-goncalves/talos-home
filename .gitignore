@@ -12,13 +12,13 @@ secrets/
 
 # Terraform. State holds the cluster PKI; the generated tfvars mirrors
 # provision.toml and is rebuilt on every run.
-terraform/.terraform/
-terraform/*.tfstate
-terraform/*.tfstate.*
-terraform/*.tfplan
-terraform/terraform.tfvars
-terraform/terraform.tfvars.json
-terraform/*.auto.tfvars
+talos/terraform/.talos/terraform/
+talos/terraform/*.tfstate
+talos/terraform/*.tfstate.*
+talos/terraform/*.tfplan
+talos/terraform/terraform.tfvars
+talos/terraform/terraform.tfvars.json
+talos/terraform/*.auto.tfvars
 
 # Python
 __pycache__/

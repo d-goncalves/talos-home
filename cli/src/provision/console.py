@@ -1,4 +1,4 @@
-"""Terminal output helpers, matching the style of scripts/recover.sh."""
+"""Terminal output helpers, matching the style of talos/scripts/recover.sh."""
 
 from __future__ import annotations
 

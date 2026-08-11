@@ -16,7 +16,7 @@ why changing the container's LAN address is uneventful.
 | | declares | applies |
 |---|---|---|
 | `provision.toml` `[pihole]` | host list, addresses, container sizing | — |
-| `terraform/tailscale.tf` | which resolvers the tailnet uses | `provision homelab apply` |
+| `talos/terraform/tailscale.tf` | which resolvers the tailnet uses | `provision homelab apply` |
 | `ansible/group_vars/piholes.yml` | upstreams, local DNS, blocklists, password | `provision homelab pihole apply` |
 
 The container itself is **not** Terraform-managed, deliberately — see below.

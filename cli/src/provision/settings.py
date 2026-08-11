@@ -112,8 +112,38 @@ def config_path() -> Path:
     return repo_root() / CONFIG_NAME
 
 
+# ── Project layout ───────────────────────────────────────────────────────────
+#
+# The repo is split by project: talos/, sandbox/ and pihole/ each own their own
+# infrastructure. Everything that needs a path goes through here, so moving a
+# project is one edit rather than a grep across the CLI.
+
+def talos_dir() -> Path:
+    return repo_root() / "talos"
+
+
+def kubernetes_dir() -> Path:
+    return talos_dir() / "kubernetes"
+
+
+def terraform_dir() -> Path:
+    return talos_dir() / "terraform"
+
+
+def scripts_dir() -> Path:
+    return talos_dir() / "scripts"
+
+
+def pihole_dir() -> Path:
+    return repo_root() / "pihole"
+
+
+def ansible_dir() -> Path:
+    return pihole_dir() / "ansible"
+
+
 def apps_dir() -> Path:
-    return repo_root() / "kubernetes" / "apps"
+    return kubernetes_dir() / "apps"
 
 
 def kustomization_path() -> Path:
@@ -121,7 +151,7 @@ def kustomization_path() -> Path:
 
 
 def tfvars_json_path() -> Path:
-    return repo_root() / "terraform" / "terraform.tfvars.json"
+    return terraform_dir() / "terraform.tfvars.json"
 
 
 def load() -> dict:
@@ -375,7 +405,7 @@ def pihole_hosts() -> list[PiholeHost]:
 
 
 def inventory_path() -> Path:
-    return repo_root() / "ansible" / "inventory.yml"
+    return ansible_dir() / "inventory.yml"
 
 
 def render_inventory() -> str:

@@ -35,7 +35,7 @@ gitea = true
 
 def write(tmp_path, monkeypatch, sandbox_table: str):
     (tmp_path / "provision.toml").write_text(BASE + textwrap.dedent(sandbox_table))
-    (tmp_path / "terraform").mkdir(exist_ok=True)
+    (tmp_path / "talos" / "terraform").mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(settings, "repo_root", lambda: tmp_path)
     return tmp_path
 

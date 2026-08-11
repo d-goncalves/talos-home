@@ -13,7 +13,7 @@ SUBSTITUTING = """
     kind: Kustomization
     metadata: {name: apps}
     spec:
-      path: ./kubernetes/apps
+      path: ./talos/kubernetes/apps
       postBuild:
         substituteFrom:
           - kind: Secret
@@ -25,18 +25,18 @@ PLAIN = """
     kind: Kustomization
     metadata: {name: flux-system}
     spec:
-      path: ./kubernetes/flux
+      path: ./talos/kubernetes/flux
 """
 
 
 def repo(tmp_path, *, kustomizations=(SUBSTITUTING,), **files):
     root = tmp_path
-    defs = root / "kubernetes" / "flux" / "kustomizations"
+    defs = root / "talos" / "kubernetes" / "flux" / "kustomizations"
     defs.mkdir(parents=True)
     for i, k in enumerate(kustomizations):
         (defs / f"k{i}.yaml").write_text(textwrap.dedent(k).strip())
     for name, body in files.items():
-        p = root / "kubernetes" / name
+        p = root / "talos" / "kubernetes" / name
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(textwrap.dedent(body).lstrip())
     return root

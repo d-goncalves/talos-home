@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m
-  path: ./kubernetes/infrastructure
+  path: ./talos/kubernetes/infrastructure
   prune: true
   sourceRef:
     kind: GitRepository

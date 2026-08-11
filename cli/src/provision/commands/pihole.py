@@ -49,7 +49,7 @@ def pihole_apply(check: bool, limit: str | None) -> None:
     if limit:
         argv += ["--limit", limit]
 
-    run(argv, cwd=settings.repo_root() / "ansible")
+    run(argv, cwd=settings.ansible_dir())
 
     if check:
         success("drift check complete")

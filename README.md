@@ -65,27 +65,21 @@ hour. See [docs/rotate.md](docs/rotate.md).
 ```
 provision          # the CLI entrypoint — ./provision --help
 provision.toml     # ALL configuration — cluster, network, nodes, apps, sandbox
-terraform/         # provisions the Proxmox VM, Talos, Tailscale, UniFi reservation
-  templates/       # Talos config patches, rendered from provision.toml
-  secrets.tf       # reads credentials from 1Password at plan time
+talos/             # the Kubernetes cluster
+  terraform/       # Proxmox VM, Talos, Tailscale, UniFi reservation, healthchecks
+  kubernetes/      # Flux: apps/, infrastructure/, flux/
+  machine-config/  # generated Talos configs (gitignored)
+  patches/         # machine config patches
+  scripts/         # recover.sh (bare-machine bootstrap), deploy-gitea.sh
+  docs/            # inventory, upgrade procedures
+sandbox/           # a throwaway Ubuntu VM — no state, driven by the Proxmox API
+pihole/            # DNS for the tailnet
+  ansible/         # unbound, upstreams, local DNS, blocklists, admin password
 cli/               # implementation of ./provision (Python + click)
-kubernetes/
-  apps/            # user-facing applications (kustomization.yaml is generated)
-  infrastructure/  # cluster-level components (Tailscale operator, NFS CSI, ESO)
-  flux/            # FluxCD bootstrap (GitRepository + Kustomizations)
-ansible/
-  site.yml         # configures the Pi-hole containers (inventory.yml is generated)
-  roles/pihole/    # unbound, upstreams, local DNS, blocklists, admin password
-scripts/
-  recover.sh       # bare-machine bootstrap: install tools, clone repo, hand off
-  deploy-gitea.sh  # Gitea helm deploy (not a Flux HelmRelease — see the script)
-docs/
+docs/              # what spans all three
   rotate.md        # how to rotate every secret, and what needs re-applying
-  inventory.md     # what is running, what is pinned, and what still floats
-  upgrading.md     # Flux, Talos and Postgres — the things Renovate does not touch
   proxmox.md       # preparing a host: API token, storage, SSH
-  pihole.md        # DNS for the tailnet, and why the container is not in Terraform
-  draw_arch.py     # generates architecture.png (requires pip install -r docs/requirements.txt)
+  draw_arch.py     # generates architecture.png (pip install -r docs/requirements.txt)
   architecture.png # rendered diagram
 ```
 
@@ -115,7 +109,7 @@ Terraform builds the node; Flux fills it.
 `./provision` creates its own `.venv` on first run, so nothing installs
 globally. [provision.toml](provision.toml) is the single source of truth for
 everything non-secret; `terraform.tfvars.json` and
-`kubernetes/apps/kustomization.yaml` are generated from it.
+`talos/kubernetes/apps/kustomization.yaml` are generated from it.
 
 NAS exports are not managed here — no UniFi API exposes UNAS shares, so those
 stay a one-time manual step and are consumed by the `nfs-csi` StorageClasses.
@@ -125,7 +119,7 @@ stay a one-time manual step and are consumed by the `nfs-csi` StorageClasses.
 > 1Password. State is gitignored — back it up with
 > `./provision homelab state backup` after every apply.
 
-See [terraform/README.md](terraform/README.md) and [cli/README.md](cli/README.md).
+See [talos/terraform/README.md](talos/terraform/README.md) and [cli/README.md](cli/README.md).
 
 ## Turning apps on and off
 
@@ -190,7 +184,7 @@ storage content types, host SSH.
 
 ### On a bare machine
 
-`scripts/recover.sh` installs the tooling and clones the repo, then hands off
+`talos/scripts/recover.sh` installs the tooling and clones the repo, then hands off
 to the CLI. It is fetched from the **GitHub mirror**, not Gitea — Gitea runs on
 the cluster being recovered.
 
@@ -241,13 +235,13 @@ rebuild loses it — silently, since nothing fails.
 Recreate it: POST to `http://ntfy.ntfy/Down` with ntfy basic auth in the
 authorization header, event `pull_request`, and ntfy templating in the query
 string (`tpl=yes`, plus `title`, `message`, `click`, `priority`).
-`ALLOWED_HOST_LIST` in `kubernetes/apps/gitea/values.yaml` is what permits
+`ALLOWED_HOST_LIST` in `talos/kubernetes/apps/gitea/values.yaml` is what permits
 Gitea to call an in-cluster address at all.
 
 Pi-hole is the second. Its container is deliberately never recreated: the
 tailnet nameserver list points at its Tailscale address, so a rebuilt container
 gets a new identity and every device loses DNS — including away from home. See
-[docs/pihole.md](docs/pihole.md).
+[pihole/README.md](pihole/README.md).
 
 ### After the NAS restarts
 
@@ -269,7 +263,7 @@ Recorded so they stop being rediscovered as open questions.
 | | why |
 |---|---|
 | Offsite database backups | Accepted risk. Immich, Outline, AdventureLog and Actual Budget exist only on the NAS. |
-| Talos / Kubernetes upgrades via Renovate | A node reboot is not a dependency bump — see [docs/upgrading.md](docs/upgrading.md). |
+| Talos / Kubernetes upgrades via Renovate | A node reboot is not a dependency bump — see [talos/docs/upgrading.md](talos/docs/upgrading.md). |
 | Second node for HA | Waiting on new hardware. One host means every reboot is a full outage. |
 | Immich machine learning | ~2 GB for smart search. Waiting on new hardware. |
-| Pinning the last 7 `:latest` images | Stateless — see [docs/inventory.md](docs/inventory.md). The worst a surprise upgrade does is restart them. |
+| Pinning the last 7 `:latest` images | Stateless — see [talos/docs/inventory.md](talos/docs/inventory.md). The worst a surprise upgrade does is restart them. |

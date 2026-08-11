@@ -20,7 +20,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 def _filter_module():
     """Load the Ansible filter plugin directly — it is not on sys.path."""
-    path = REPO / "ansible" / "filter_plugins" / "pihole.py"
+    path = REPO / "pihole" / "ansible" / "filter_plugins" / "pihole.py"
     spec = importlib.util.spec_from_file_location("pihole_filters", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

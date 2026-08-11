@@ -13,8 +13,8 @@ from ..shell import CommandError
 def sync() -> None:
     """Regenerate everything provision.toml drives.
 
-    Writes terraform/terraform.tfvars.json, kubernetes/apps/kustomization.yaml
-    and ansible/inventory.yml. Safe to run any time.
+    Writes talos/terraform/terraform.tfvars.json, talos/kubernetes/apps/kustomization.yaml
+    and pihole/ansible/inventory.yml. Safe to run any time.
     """
     unfilled = settings.unfilled()
     if unfilled:
@@ -32,21 +32,21 @@ def sync() -> None:
         fail(f"[apps] declares '{name}' but kubernetes/apps/{name}/ does not exist")
 
     if kustomize.write(apps):
-        success("wrote kubernetes/apps/kustomization.yaml")
+        success("wrote talos/kubernetes/apps/kustomization.yaml")
     else:
-        info("kubernetes/apps/kustomization.yaml already up to date")
+        info("talos/kubernetes/apps/kustomization.yaml already up to date")
 
     if settings.pihole_hosts():
         if settings.write_inventory():
-            success("wrote ansible/inventory.yml")
+            success("wrote pihole/ansible/inventory.yml")
         else:
-            info("ansible/inventory.yml already up to date")
+            info("pihole/ansible/inventory.yml already up to date")
 
     if not unfilled:
         if settings.write_tfvars():
-            success("wrote terraform/terraform.tfvars.json")
+            success("wrote talos/terraform/terraform.tfvars.json")
         else:
-            info("terraform/terraform.tfvars.json already up to date")
+            info("talos/terraform/terraform.tfvars.json already up to date")
 
 
 @click.command("init")

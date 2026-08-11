@@ -49,7 +49,7 @@ _UNESCAPED = re.compile(r"(?<!\$)\$\{([A-Za-z_][A-Za-z0-9_]*)\}")
 
 def substituted_paths(repo_root) -> list:
     """Repo paths built by a Kustomization that does postBuild substitution."""
-    defs = repo_root / "kubernetes" / "flux" / "kustomizations"
+    defs = repo_root / "talos" / "kubernetes" / "flux" / "kustomizations"
     paths = []
     for f in sorted(defs.glob("*.yaml")):
         for doc in yaml.safe_load_all(f.read_text()):
