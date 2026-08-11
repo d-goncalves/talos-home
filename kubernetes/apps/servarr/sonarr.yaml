@@ -18,6 +18,9 @@ spec:
       initContainers:
         - name: init-config
           image: alpine
+          # The API key is written by the shell at runtime from the mounted
+          # secret, so it is escaped as $${...}: Flux substitutes $$ down to a
+          # single $ and otherwise claims every ${...} it sees.
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -26,7 +29,7 @@ spec:
                 cat > /config/config.xml <<XML
               <Config>
                 <InstanceName>Sonarr</InstanceName>
-                <ApiKey>${SONARR_API_KEY}</ApiKey>
+                <ApiKey>$${SONARR_API_KEY}</ApiKey>
                 <AuthenticationMethod>Forms</AuthenticationMethod>
                 <AuthenticationRequired>Enabled</AuthenticationRequired>
                 <Branch>main</Branch>
