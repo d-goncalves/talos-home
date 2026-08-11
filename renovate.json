@@ -39,11 +39,12 @@
       ]
     },
     {
-      "description": "Gitea holds the repo Flux reconciles from and Renovate's own runtime. An unattended bump to either can lock you out of your own GitOps loop, so both are review-only whatever the semver says.",
+      "description": "Gitea holds the repo Flux reconciles from, Flux applies it, and the runner and Renovate drive the loop. An unattended bump to any of them can lock you out of your own GitOps loop, so all are review-only whatever the semver says.",
       "matchPackageNames": [
         "/gitea/",
         "/act_runner/",
-        "/renovate/"
+        "/renovate/",
+        "/fluxcd/"
       ],
       "automerge": false,
       "addLabels": [
