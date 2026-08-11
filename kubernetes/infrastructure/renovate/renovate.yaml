@@ -22,6 +22,12 @@ spec:
     - secretKey: token
       remoteRef:
         key: <item-id>/credential # Renovate - talos-home
+    # Read-only use: Renovate looks up releases and changelogs on github.com.
+    # Unauthenticated that is 60 requests an hour, which it exhausts and then
+    # reports as "rate-limited" updates that never appear.
+    - secretKey: github_token
+      remoteRef:
+        key: <item-id>/token # GitHub PAT (also used by the Gitea mirror)
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -64,6 +70,11 @@ spec:
                       key: token
                 # Renovate reads the registry over the internet but writes only
                 # to Gitea; nothing here needs cluster credentials.
+                - name: GITHUB_COM_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: renovate-token
+                      key: github_token
                 - name: LOG_LEVEL
                   value: info
               resources:

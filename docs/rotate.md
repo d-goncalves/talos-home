@@ -121,6 +121,11 @@ Back the state up afterwards, since it holds the new values:
 
 ## GitHub mirror token
 
+> Two things read this token: the Gitea push mirror, and Renovate (read-only,
+> for changelogs and to avoid GitHub's 60-requests-an-hour anonymous limit).
+> Rotating it means updating the 1Password item **and** replacing the mirror
+> credential; Renovate picks it up on the next ESO sync.
+
 Gitea stores this in its own database, not in 1Password, so nothing picks it up
 automatically. After rotating the token, replace the mirror in
 **Gitea → repo → Settings → Repository → Mirror Settings**, or leave the item

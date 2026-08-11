@@ -50,6 +50,22 @@
       "addLabels": [
         "needs-care"
       ]
+    },
+    {
+      "description": "Never propose a major bump for a stateful datastore. Postgres refuses to start on a data directory written by an older major, so this is a pg_upgrade or dump-restore migration, not a tag change \u2014 and a PR that reads as routine is one click from taking Immich, Outline and AdventureLog down. Minor and patch still flow.",
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchPackageNames": [
+        "/postgres/",
+        "/postgis/",
+        "/redis/",
+        "/valkey/"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "enabled": false
     }
   ],
   "flux": {
