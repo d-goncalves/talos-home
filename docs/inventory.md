@@ -11,9 +11,11 @@ not to be kept up to date by hand.
 |---|---|
 | Talos | v1.13.2 |
 | Kubernetes | v1.36.0 |
+| Flux | v2.9.4 |
 
-Neither is tracked by Renovate. Upgrading them is `talosctl upgrade` /
-`talosctl upgrade-k8s` — a node reboot you choose, not a dependency bump.
+None is tracked by Renovate. Talos and Kubernetes are `talosctl upgrade` /
+`talosctl upgrade-k8s` — a node reboot you choose, not a dependency bump. Flux
+is upgraded as a bundle; see [todo.md](todo.md).
 
 ## Helm charts — all pinned
 
@@ -31,7 +33,7 @@ green. Majors open a PR. Gitea, Flux, the runner and Renovate itself are
 review-only whatever the semver says — an unattended bump to any of them can
 break the loop you would use to roll it back.
 
-## Container images — 42 pinned
+## Container images — 43 pinned
 
 Renovate can see these, so they stay current on their own.
 
@@ -46,14 +48,14 @@ Renovate can see these, so they stay current on their own.
 | `docker.io/valkey/valkey:9.1-alpine` | immich |
 | `ghcr.io/advplyr/audiobookshelf:2.36.0` | audiobookshelf |
 | `ghcr.io/external-secrets/external-secrets:v2.5.0` | external-secrets |
-| `ghcr.io/fluxcd/helm-controller:v1.5.4` | flux-system |
-| `ghcr.io/fluxcd/kustomize-controller:v1.8.5` | flux-system |
-| `ghcr.io/fluxcd/notification-controller:v1.8.4` | flux-system |
-| `ghcr.io/fluxcd/source-controller:v1.8.4` | flux-system |
+| `ghcr.io/fluxcd/helm-controller:v1.6.3` | flux-system |
+| `ghcr.io/fluxcd/kustomize-controller:v1.9.4` | flux-system |
+| `ghcr.io/fluxcd/notification-controller:v1.9.3` | flux-system |
+| `ghcr.io/fluxcd/source-controller:v1.9.4` | flux-system |
 | `ghcr.io/immich-app/immich-server:v2.6.3` | immich |
 | `ghcr.io/immich-app/postgres:14-vectorchord0.3.0-pgvectors0.2.0` | immich |
-| `ghcr.io/seanmorley15/adventurelog-backend` (digest) | adventurelog |
-| `ghcr.io/seanmorley15/adventurelog-frontend` (digest) | adventurelog |
+| `ghcr.io/seanmorley15/adventurelog-backend:latest` (digest-pinned) | adventurelog |
+| `ghcr.io/seanmorley15/adventurelog-frontend:latest` (digest-pinned) | adventurelog |
 | `ghcr.io/sysadminsmedia/homebox:0.26.2` | homebox |
 | `gitea/act_runner:0.2.13` | gitea |
 | `louislam/uptime-kuma:1.23.17` | uptime-kuma |
@@ -70,6 +72,7 @@ Renovate can see these, so they stay current on their own.
 | `rancher/local-path-provisioner:v0.0.31` | local-path-storage |
 | `redis:7-alpine` | outline |
 | `registry.k8s.io/coredns/coredns:v1.14.2` | kube-system |
+| `renovate/renovate:39.264.0` | kube-system |
 | `registry.k8s.io/metrics-server/metrics-server:v0.8.1` | kube-system |
 | `registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.17.0` | kube-system |
 | `registry.k8s.io/sig-storage/csi-provisioner:v6.3.0` | kube-system |
@@ -80,16 +83,17 @@ Renovate can see these, so they stay current on their own.
 | `tailscale/k8s-operator:v1.98.9` | tailscale |
 | `tailscale/tailscale:v1.98.9` | tailscale |
 
-## Container images — 7 still on `:latest`
+## Container images — 8 still on `:latest`
 
 Deliberately. Each is stateless: it holds no database and no config worth
-keeping, so the worst a surprise upgrade does is restart it. `alpine` is an
-init container that runs `chown` and exits.
+keeping, so the worst a surprise upgrade does is restart it. `alpine` and
+`alpine/curl` are not services at all — they run a command and exit.
 
 | image | namespace |
 |---|---|
 | `adolfintel/speedtest:latest` | librespeed |
 | `alpine` | servarr |
+| `alpine/curl` | servarr |
 | `corentinth/it-tools:latest` | it-tools |
 | `fallenbagel/jellyseerr:latest` | servarr |
 | `ghcr.io/alam00000/bentopdf-simple:latest` | bentopdf |
