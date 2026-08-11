@@ -23,6 +23,17 @@ data:
     auth-file: /var/lib/ntfy/auth.db
     auth-default-access: deny-all
     behind-proxy: true
+    # Without this, iOS gets no notifications from this server at all.
+    #
+    # iOS does not let an app hold a background connection, so a push has to
+    # arrive via APNs — and only ntfy.sh is registered with Apple. A
+    # self-hosted instance therefore sends an empty wake-up through ntfy.sh,
+    # and the phone then fetches the actual message from here over the
+    # tailnet. The message body never leaves the tailnet; the relay carries
+    # only "topic X has something for you".
+    #
+    # Android is unaffected either way — it can hold the connection itself.
+    upstream-base-url: https://ntfy.sh
 ---
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
