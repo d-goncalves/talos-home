@@ -138,6 +138,10 @@ def pihole_dir() -> Path:
     return repo_root() / "pihole"
 
 
+def pihole_terraform_dir() -> Path:
+    return pihole_dir() / "terraform"
+
+
 def ansible_dir() -> Path:
     return pihole_dir() / "ansible"
 
@@ -275,12 +279,6 @@ def tfvars() -> dict:
         if unknown:
             fail(f"provision.toml: [nodes.{name}] has unknown keys: {', '.join(sorted(unknown))}")
 
-    # Devices resolve against the tailnet addresses, so this is the list that
-    # decides whether DNS works. Order is preference order.
-    hosts = pihole_hosts()
-    if hosts:
-        out["tailnet_nameservers"] = [h.tailscale_ip for h in hosts]
-
     return out
 
 
@@ -402,6 +400,40 @@ def pihole_hosts() -> list[PiholeHost]:
     if len(set(names)) != len(names):
         fail("provision.toml: [[pihole.hosts]] has duplicate names")
     return out
+
+
+def pihole_tfvars_path() -> Path:
+    return pihole_terraform_dir() / "terraform.tfvars.json"
+
+
+def pihole_tfvars() -> dict:
+    """Terraform variables for the Pi-hole root.
+
+    Its own state, so its own tfvars. Devices resolve against the tailnet
+    addresses, so this list is what decides whether DNS works at all; order is
+    preference order.
+    """
+    hosts = pihole_hosts()
+    if not hosts:
+        return {}
+    return {"tailnet_nameservers": [h.tailscale_ip for h in hosts]}
+
+
+def write_pihole_tfvars() -> bool:
+    """Write pihole/terraform/terraform.tfvars.json. True when it changed."""
+    values = pihole_tfvars()
+    if not values:
+        return False
+
+    content = json.dumps(values, indent=2, sort_keys=True) + "\n"
+    path = pihole_tfvars_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    if path.exists() and path.read_text() == content:
+        return False
+
+    path.write_text(content)
+    return True
 
 
 def inventory_path() -> Path:

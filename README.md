@@ -65,7 +65,7 @@ hour. See [docs/rotate.md](docs/rotate.md).
 ```
 provision          # the CLI entrypoint — ./provision --help
 provision.toml     # ALL configuration — cluster, network, nodes, apps, sandbox
-talos/             # the Kubernetes cluster
+homelab/           # the Kubernetes cluster
   terraform/       # Proxmox VM, Talos, Tailscale, UniFi reservation, healthchecks
   kubernetes/      # Flux: apps/, infrastructure/, flux/
   machine-config/  # generated Talos configs (gitignored)
@@ -74,6 +74,7 @@ talos/             # the Kubernetes cluster
   docs/            # inventory, upgrade procedures
 sandbox/           # a throwaway Ubuntu VM — no state, driven by the Proxmox API
 pihole/            # DNS for the tailnet
+  terraform/       # the tailnet nameserver list — its own state
   ansible/         # unbound, upstreams, local DNS, blocklists, admin password
 cli/               # implementation of ./provision (Python + click)
 docs/              # what spans all three
@@ -90,10 +91,10 @@ One command group each, named after the directory that holds it:
 
 | | `provision homelab` | `provision sandbox` | `provision pihole` |
 |---|---|---|---|
-| directory | `talos/` | `sandbox/` | `pihole/` |
+| directory | `homelab/` | `sandbox/` | `pihole/` |
 | what | the Talos cluster and its apps | a throwaway Ubuntu VM | DNS for the tailnet |
 | driven by | Terraform + Flux | the Proxmox API, directly | Ansible |
-| state | `terraform.tfstate`, backed up to 1Password | none | none — the container is the state |
+| state | `terraform.tfstate`, backed up to 1Password | none | its own `terraform.tfstate`, disposable |
 | lifetime | months | minutes | years |
 
 The sandbox holds no Terraform state, so a mistake there cannot plan a change
@@ -101,9 +102,10 @@ against the cluster. Pi-hole's container is deliberately not Terraform-managed
 either — see [pihole/README.md](pihole/README.md) — so `provision pihole`
 reports drift rather than correcting it.
 
-Terraform is a single state under `talos/`, including the one resource that is
-really Pi-hole's: the tailnet nameserver list. Splitting state for one resource
-would buy a second init, apply and restore path in recovery.
+Each stack that needs Terraform has its own root and its own state, so a plan
+aimed at one cannot touch the other. Only the cluster's state is irreplaceable —
+it holds the cluster PKI, and `provision homelab state backup` puts it in
+1Password. Pi-hole's holds a nameserver list and can be rebuilt by re-applying.
 
 ## Provisioning
 

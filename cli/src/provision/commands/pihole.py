@@ -14,9 +14,20 @@ from __future__ import annotations
 
 import click
 
-from .. import settings
+from .. import settings, tf
 from ..console import fail, info, rule, success
 from ..shell import require, run
+
+
+def _terraform(*args: str) -> None:
+    """Run terraform in the Pi-hole root, not the homelab one.
+
+    Separate state, deliberately. Nothing irreplaceable lives in it — the only
+    resource is the tailnet nameserver list — so unlike homelab there is no
+    backup-to-1Password step to forget.
+    """
+    settings.write_pihole_tfvars()
+    tf.tf(*args, with_secrets=True, cwd=settings.pihole_terraform_dir())
 
 
 @click.group("pihole")
@@ -28,9 +39,8 @@ def pihole() -> None:
       ./provision pihole apply --check  config drift, changes nothing
       ./provision pihole apply          converge
 
-    The tailnet nameserver list is Terraform's, and Terraform is one state
-    under talos/ — so that part is `./provision homelab apply`. See
-    pihole/README.md.
+    The tailnet nameserver list is Terraform's, in this project's own root
+    with its own state: `./provision pihole dns`. See pihole/README.md.
     """
 
 
@@ -146,3 +156,43 @@ def pihole_check() -> None:
         fail(f"{len(problems)} container(s) differ from provision.toml")
 
     success(f"{len(hosts)} container(s) match provision.toml")
+
+
+@pihole.group("dns")
+def pihole_dns() -> None:
+    """The tailnet nameserver list — Terraform, with its own state.
+
+    Separate from the container config above: this is what every device
+    resolves against, so an empty or wrong list takes DNS down everywhere at
+    once, including away from home.
+    """
+
+
+@pihole_dns.command("plan")
+def pihole_dns_plan() -> None:
+    """Show what would change."""
+    require("terraform")
+    _terraform("plan")
+
+
+@pihole_dns.command("apply")
+@click.option("--auto-approve", is_flag=True, help="Skip the interactive approval.")
+def pihole_dns_apply(auto_approve: bool) -> None:
+    """Publish the nameserver list. Read the plan first."""
+    require("terraform")
+    args = ["apply"]
+    if auto_approve:
+        args.append("-auto-approve")
+    _terraform(*args)
+
+
+@pihole_dns.command("init")
+@click.option("--upgrade", is_flag=True, help="Allow provider version upgrades.")
+def pihole_dns_init(upgrade: bool) -> None:
+    """Initialize the Pi-hole terraform working directory."""
+    require("terraform")
+    args = ["init", "-input=false"]
+    if upgrade:
+        args.append("-upgrade")
+    _terraform(*args)
+    success("initialized")

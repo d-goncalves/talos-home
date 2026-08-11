@@ -23,7 +23,7 @@ jobs:
           # --upgrade matters: the image ships an expat older than the python3
           # apk installs, and pyexpat then fails to relocate at import time —
           # which surfaces as a pip traceback rather than anything obvious.
-          apk add --no-cache --upgrade expat python3 py3-pip git >/dev/null
+          apk add --no-cache --upgrade expat python3 py3-pip git unzip >/dev/null
           # kubectl is not in Alpine's repos, and the storage audit and the
           # kustomize builds both need it. Skipped when already present, so
           # only the first run after a runner restart pays for it.
@@ -32,10 +32,20 @@ jobs:
               https://dl.k8s.io/release/v1.36.0/bin/linux/amd64/kubectl
             chmod +x /usr/local/bin/kubectl
           fi
+          # Same deal for terraform. Installed rather than skipped-when-missing:
+          # a check that quietly no-ops is worse than no check, because it
+          # reports green either way.
+          if ! command -v terraform >/dev/null; then
+            wget -qO /tmp/tf.zip \
+              https://releases.hashicorp.com/terraform/1.9.8/terraform_1.9.8_linux_amd64.zip
+            unzip -qo /tmp/tf.zip -d /usr/local/bin && rm -f /tmp/tf.zip
+            chmod +x /usr/local/bin/terraform
+          fi
           # No pipe to head here: kubectl gets SIGPIPE when head closes the
           # stream and the step dies with exit 141.
           python3 --version
           kubectl version --client=true >/dev/null && echo "kubectl ok"
+          terraform version >/dev/null && echo "terraform ok"
 
       - name: Clone
         run: |
@@ -93,6 +103,22 @@ jobs:
           for overlay in homelab/kubernetes/apps homelab/kubernetes/infrastructure homelab/kubernetes/flux; do
             echo "building $overlay"
             kubectl kustomize "$overlay" >/dev/null
+          done
+
+      - name: Terraform roots are well-formed
+        run: |
+          # Both roots, because they are separate states: a syntax error in the
+          # Pi-hole one would otherwise only surface the next time DNS needed
+          # changing, which is the worst moment to discover it.
+          #
+          # fmt and a parse-only validate. `validate` normally wants `init`, and
+          # init here would download providers and reach 1Password for nothing —
+          # the credentials are not needed to check that the HCL is sane.
+          cd repo
+          terraform fmt -check -recursive homelab/terraform pihole/terraform
+          for root in homelab/terraform pihole/terraform; do
+            terraform -chdir="$root" init -backend=false -input=false >/dev/null
+            terraform -chdir="$root" validate
           done
 
       - name: Flux can substitute every variable

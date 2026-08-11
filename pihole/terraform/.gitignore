@@ -1,0 +1,16 @@
+# State holds the cluster CA private key, bootstrap tokens, the secretbox
+# encryption key and the Tailscale auth key. Never commit it.
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+# .terraform.lock.hcl is intentionally NOT ignored — commit it so provider
+# versions are reproducible across rebuilds.
+
+# Real values — the .example file is the tracked one.
+*.auto.tfvars
+terraform.tfvars
+
+# Plan files embed the same secrets as state.
+*.tfplan
+crash.log

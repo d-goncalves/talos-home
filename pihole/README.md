@@ -9,6 +9,8 @@ why changing the container's LAN address is uneventful.
 ./provision pihole check          # container spec vs provision.toml
 ./provision pihole apply --check  # config drift, changes nothing
 ./provision pihole apply          # converge
+./provision pihole dns plan       # the tailnet nameserver list
+./provision pihole dns apply
 ```
 
 ## Who owns what
@@ -16,10 +18,23 @@ why changing the container's LAN address is uneventful.
 | | declares | applies |
 |---|---|---|
 | `provision.toml` `[pihole]` | host list, addresses, container sizing | — |
-| `homelab/terraform/tailscale.tf` | which resolvers the tailnet uses | `provision homelab apply` |
+| `terraform/tailscale.tf` | which resolvers the tailnet uses | `provision pihole dns apply` |
 | `ansible/group_vars/piholes.yml` | upstreams, local DNS, blocklists, password | `provision pihole apply` |
 
 The container itself is **not** Terraform-managed, deliberately — see below.
+
+## Its own Terraform state
+
+`terraform/` here is a separate root from `homelab/terraform`, with its own
+state. That costs a second `init` and a second `apply`, and buys a clean split:
+nothing about Pi-hole can be destroyed by a plan aimed at the cluster.
+
+Unlike the cluster's state, this one is **disposable** — the only resource is
+the tailnet nameserver list, so losing it means re-importing or simply
+re-applying the same value. There is deliberately no `state backup` path for it.
+
+Both roots read the same `Tailscale Talos` 1Password item, so rotating that
+credential means applying both — see [rotate.md](../docs/rotate.md).
 
 ## Two rules
 

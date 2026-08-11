@@ -118,10 +118,17 @@ def tf(
     capture: bool = False,
     check: bool = True,
     with_secrets: bool = False,
+    cwd: Path | None = None,
 ) -> str:
+    """Run terraform. Defaults to the homelab root; `cwd` picks another.
+
+    Pi-hole has its own root and its own state, so it passes its directory
+    here rather than reimplementing the binary lookup and the 1Password
+    environment.
+    """
     return run(
         [binary(), *args],
-        cwd=tf_dir(),
+        cwd=cwd or tf_dir(),
         capture=capture,
         check=check,
         env=op_env() if with_secrets else None,

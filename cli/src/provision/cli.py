@@ -47,7 +47,7 @@ def cli() -> None:
     command group, matching the directory that holds it.
 
     \b
-    homelab   the Talos cluster            talos/
+    homelab   the Talos cluster            homelab/
       ./provision homelab up          a machine from scratch, end to end
       ./provision homelab check       anything pending?
       ./provision homelab apps disable adventurelog

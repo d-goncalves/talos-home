@@ -10,15 +10,25 @@ secrets/
 .codex/
 .claude/
 
-# Terraform. State holds the cluster PKI; the generated tfvars mirrors
-# provision.toml and is rebuilt on every run.
-homelab/terraform/.homelab/terraform/
+# Terraform. Two roots, two states. homelab/ holds the cluster PKI and is
+# backed up to 1Password; pihole/ holds only the tailnet nameserver list and is
+# disposable. Each root also carries its own .gitignore — these entries are
+# belt-and-braces so a state file cannot be committed from the repo root.
+homelab/terraform/.terraform/
 homelab/terraform/*.tfstate
 homelab/terraform/*.tfstate.*
 homelab/terraform/*.tfplan
 homelab/terraform/terraform.tfvars
 homelab/terraform/terraform.tfvars.json
 homelab/terraform/*.auto.tfvars
+
+pihole/terraform/.terraform/
+pihole/terraform/*.tfstate
+pihole/terraform/*.tfstate.*
+pihole/terraform/*.tfplan
+pihole/terraform/terraform.tfvars
+pihole/terraform/terraform.tfvars.json
+pihole/terraform/*.auto.tfvars
 
 # Python
 __pycache__/

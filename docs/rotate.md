@@ -19,11 +19,21 @@ item and you are done; the next apply uses the new value.
 |---|---|
 | healthchecks.io API key | `Healthchecks.io - talos-home` |
 | Proxmox API token | `Proxmox API - talos-home` — role setup in [proxmox.md](proxmox.md) |
-| Tailscale OAuth client | `Tailscale Talos` |
+| Tailscale OAuth client | `Tailscale Talos` ⚠ read by two Terraform roots |
 | UniFi local admin | `UniFi Local Admin - talos-home` |
 
 > The old value stays in `terraform.tfstate` until the next apply. Harmless —
 > the state is gitignored, and the old secret is revoked.
+
+> ⚠ There are **two** Terraform roots: `homelab/terraform` and
+> `pihole/terraform`. Both read `Tailscale Talos`, so rotating it means
+> applying both, or the second keeps a revoked credential in its state and
+> fails on its next run:
+>
+> ```bash
+> ./provision homelab apply
+> ./provision pihole dns apply
+> ```
 
 ## App secrets — wait an hour, or force it
 
@@ -46,9 +56,9 @@ kubectl annotate externalsecret -n <namespace> <name> force-sync=$(date +%s) --o
 | servarr | `servarr` |
 | tailscale-operator | `Tailscale Talos` ⚠ shared |
 
-> ⚠ `Tailscale Talos` is read by **both** the Tailscale operator in the cluster
-> and Terraform. Rotating it means doing both: force the ExternalSecret sync
-> **and** run `./provision homelab apply`.
+> ⚠ `Tailscale Talos` has **three** consumers: the Tailscale operator in the
+> cluster, and both Terraform roots. Rotating it means the ExternalSecret sync
+> **and** `./provision homelab apply` **and** `./provision pihole dns apply`.
 
 Most apps also need a restart to read the new value:
 
@@ -151,5 +161,6 @@ too.
 ```bash
 ./provision homelab secrets check      # what 1Password must hold, and whether it does
 kubectl get externalsecrets -A         # every app secret, and whether it synced
-cd terraform && terraform plan         # proves Terraform can still authenticate
+./provision homelab check              # proves the cluster root can authenticate
+./provision pihole dns plan            # proves the Pi-hole root can too
 ```

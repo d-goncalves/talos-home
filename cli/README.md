@@ -52,7 +52,7 @@ run on a schedule as a drift check.
 ## Commands
 
 Three groups, one per project directory: `homelab` is the Talos cluster in
-`talos/`, driven by Terraform and Flux; `sandbox` is a throwaway VM in
+`homelab/`, driven by Terraform and Flux; `sandbox` is a throwaway VM in
 `sandbox/`, driven straight through the Proxmox API; `pihole` is DNS for the
 tailnet in `pihole/`, driven by Ansible.
 
@@ -82,11 +82,11 @@ state, so no sandbox command can plan a change against the cluster.
 |---|---|
 | `check` | Live containers vs `provision.toml`; reports, never corrects |
 | `apply` | Converge the config; `--check` for drift, `--limit` for one host |
+| `dns plan\|apply\|init` | The tailnet nameserver list — its own Terraform root and state |
 
-The tailnet nameserver list is a Terraform resource, and Terraform is one state
-under `talos/` — so that part is `provision homelab apply`. See
-[pihole/README.md](../pihole/README.md) for why the containers themselves are
-deliberately not Terraform-managed.
+`dns` is a second Terraform root with its own state, separate from the
+cluster's — see [pihole/README.md](../pihole/README.md), which also explains why
+the containers themselves are deliberately not Terraform-managed.
 
 ### `provision sandbox`
 
