@@ -22,10 +22,15 @@ spec:
   data:
     # Only the ping URL, never the API key that also lives on this item: the
     # cluster has no business being able to reconfigure its own watchdog.
+    #
+    # Key format is <item-id>/<field>, not the bare item id used by
+    # `dataFrom: extract` elsewhere here. The store already pins the vault, so
+    # the onepasswordSDK provider builds op://<vault>/<key> itself: an id on
+    # its own resolves to op://vault/item with no field and is rejected as
+    # malformed, and passing a full op:// URI nests one inside another.
     - secretKey: ping_url
       remoteRef:
-        key: <item-id> # Healthchecks.io - talos-home
-        property: ping_url
+        key: <item-id>/ping_url # Healthchecks.io - talos-home
 ---
 apiVersion: batch/v1
 kind: CronJob
