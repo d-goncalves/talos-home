@@ -1,6 +1,6 @@
 """Post-provision cluster bootstrap.
 
-This is the part of talos/scripts/recover.sh that has to happen after the node is up:
+This is the part of homelab/scripts/recover.sh that has to happen after the node is up:
 seeding the two secrets that are never stored in git, then handing control to
 Flux.
 """
@@ -184,7 +184,7 @@ def bootstrap_gitea() -> None:
     """Deploy Gitea via the existing helm script.
 
     Gitea is deliberately not a Flux HelmRelease: Flux sources its GitRepository
-    from Gitea, so Flux owning Gitea would be circular. talos/scripts/deploy-gitea.sh
+    from Gitea, so Flux owning Gitea would be circular. homelab/scripts/deploy-gitea.sh
     carries the accumulated workarounds (envsubst for TAILNET_DOMAIN,
     --force-conflicts for the field-manager conflict), so call it rather than
     reimplementing it here.

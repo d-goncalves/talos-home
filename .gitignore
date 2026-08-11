@@ -1,8 +1,8 @@
 # Talos sensitive files — never commit these
-talos/patches/tailscale.yaml
-talos/patches/tailscale-ext.yaml
-talos/talosconfig
-talos/machine-config/
+homelab/patches/tailscale.yaml
+homelab/patches/tailscale-ext.yaml
+homelab/talosconfig
+homelab/machine-config/
 secrets/
 
 # Local agent/editor tooling. .codex/config.toml holds MCP server credentials
@@ -12,13 +12,13 @@ secrets/
 
 # Terraform. State holds the cluster PKI; the generated tfvars mirrors
 # provision.toml and is rebuilt on every run.
-talos/terraform/.talos/terraform/
-talos/terraform/*.tfstate
-talos/terraform/*.tfstate.*
-talos/terraform/*.tfplan
-talos/terraform/terraform.tfvars
-talos/terraform/terraform.tfvars.json
-talos/terraform/*.auto.tfvars
+homelab/terraform/.homelab/terraform/
+homelab/terraform/*.tfstate
+homelab/terraform/*.tfstate.*
+homelab/terraform/*.tfplan
+homelab/terraform/terraform.tfvars
+homelab/terraform/terraform.tfvars.json
+homelab/terraform/*.auto.tfvars
 
 # Python
 __pycache__/

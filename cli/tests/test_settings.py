@@ -53,10 +53,10 @@ SAMPLE = textwrap.dedent(
 def repo(tmp_path, monkeypatch):
     """A minimal repo whose app dirs match the [apps] table."""
     (tmp_path / "provision.toml").write_text(SAMPLE)
-    apps = tmp_path / "talos" / "kubernetes" / "apps"
+    apps = tmp_path / "homelab" / "kubernetes" / "apps"
     for name in ("gitea", "immich", "adventurelog"):
         (apps / name).mkdir(parents=True)
-    (tmp_path / "talos" / "terraform").mkdir(parents=True)
+    (tmp_path / "homelab" / "terraform").mkdir(parents=True)
     monkeypatch.setattr(settings, "repo_root", lambda: tmp_path)
     return tmp_path
 

@@ -117,7 +117,7 @@ Terraform builds the node; Flux fills it.
 `./provision` creates its own `.venv` on first run, so nothing installs
 globally. [provision.toml](provision.toml) is the single source of truth for
 everything non-secret; `terraform.tfvars.json` and
-`talos/kubernetes/apps/kustomization.yaml` are generated from it.
+`homelab/kubernetes/apps/kustomization.yaml` are generated from it.
 
 NAS exports are not managed here — no UniFi API exposes UNAS shares, so those
 stay a one-time manual step and are consumed by the `nfs-csi` StorageClasses.
@@ -127,7 +127,7 @@ stay a one-time manual step and are consumed by the `nfs-csi` StorageClasses.
 > 1Password. State is gitignored — back it up with
 > `./provision homelab state backup` after every apply.
 
-See [talos/terraform/README.md](talos/terraform/README.md) and [cli/README.md](cli/README.md).
+See [homelab/terraform/README.md](homelab/terraform/README.md) and [cli/README.md](cli/README.md).
 
 ## Turning apps on and off
 
@@ -192,7 +192,7 @@ storage content types, host SSH.
 
 ### On a bare machine
 
-`talos/scripts/recover.sh` installs the tooling and clones the repo, then hands off
+`homelab/scripts/recover.sh` installs the tooling and clones the repo, then hands off
 to the CLI. It is fetched from the **GitHub mirror**, not Gitea — Gitea runs on
 the cluster being recovered.
 
@@ -243,7 +243,7 @@ rebuild loses it — silently, since nothing fails.
 Recreate it: POST to `http://ntfy.ntfy/Down` with ntfy basic auth in the
 authorization header, event `pull_request`, and ntfy templating in the query
 string (`tpl=yes`, plus `title`, `message`, `click`, `priority`).
-`ALLOWED_HOST_LIST` in `talos/kubernetes/apps/gitea/values.yaml` is what permits
+`ALLOWED_HOST_LIST` in `homelab/kubernetes/apps/gitea/values.yaml` is what permits
 Gitea to call an in-cluster address at all.
 
 Pi-hole is the second. Its container is deliberately never recreated: the
@@ -271,7 +271,7 @@ Recorded so they stop being rediscovered as open questions.
 | | why |
 |---|---|
 | Offsite database backups | Accepted risk. Immich, Outline, AdventureLog and Actual Budget exist only on the NAS. |
-| Talos / Kubernetes upgrades via Renovate | A node reboot is not a dependency bump — see [talos/docs/upgrading.md](talos/docs/upgrading.md). |
+| Talos / Kubernetes upgrades via Renovate | A node reboot is not a dependency bump — see [homelab/docs/upgrading.md](homelab/docs/upgrading.md). |
 | Second node for HA | Waiting on new hardware. One host means every reboot is a full outage. |
 | Immich machine learning | ~2 GB for smart search. Waiting on new hardware. |
-| Pinning the last 7 `:latest` images | Stateless — see [talos/docs/inventory.md](talos/docs/inventory.md). The worst a surprise upgrade does is restart them. |
+| Pinning the last 7 `:latest` images | Stateless — see [homelab/docs/inventory.md](homelab/docs/inventory.md). The worst a surprise upgrade does is restart them. |

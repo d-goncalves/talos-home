@@ -44,7 +44,7 @@ def repo_root() -> Path:
         return Path(override).expanduser().resolve()
 
     candidate = Path(__file__).resolve().parents[3]
-    if (candidate / "talos" / "terraform").is_dir() and (candidate / "provision.toml").is_file():
+    if (candidate / "homelab" / "terraform").is_dir() and (candidate / "provision.toml").is_file():
         return candidate
 
     try:
@@ -65,7 +65,7 @@ def repo_root() -> Path:
 
 
 def tf_dir() -> Path:
-    path = repo_root() / "talos" / "terraform"
+    path = repo_root() / "homelab" / "terraform"
     if not path.is_dir():
         fail(f"terraform directory not found at {path}")
     return path

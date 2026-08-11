@@ -63,7 +63,7 @@ jobs:
         run: |
           cd repo && . .ci/bin/activate
           python -m provision homelab sync
-          for f in talos/kubernetes/apps/kustomization.yaml pihole/ansible/inventory.yml; do
+          for f in homelab/kubernetes/apps/kustomization.yaml pihole/ansible/inventory.yml; do
             git diff --quiet -- "$f" || {
               echo "::error::$f is out of date."
               echo "Run './provision homelab sync' and commit the result."
@@ -80,17 +80,17 @@ jobs:
       - name: Nothing under kubernetes/ is untracked
         run: |
           cd repo
-          untracked="$(git ls-files --others --exclude-standard talos/kubernetes/)"
+          untracked="$(git ls-files --others --exclude-standard homelab/kubernetes/)"
           if [ -n "$untracked" ]; then
             echo "$untracked"
-            echo "::error::untracked files under talos/kubernetes/ — commit them or gitignore them"
+            echo "::error::untracked files under homelab/kubernetes/ — commit them or gitignore them"
             exit 1
           fi
 
       - name: Kustomize builds
         run: |
           cd repo
-          for overlay in talos/kubernetes/apps talos/kubernetes/infrastructure talos/kubernetes/flux; do
+          for overlay in homelab/kubernetes/apps homelab/kubernetes/infrastructure homelab/kubernetes/flux; do
             echo "building $overlay"
             kubectl kustomize "$overlay" >/dev/null
           done

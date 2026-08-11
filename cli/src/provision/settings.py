@@ -114,24 +114,24 @@ def config_path() -> Path:
 
 # ── Project layout ───────────────────────────────────────────────────────────
 #
-# The repo is split by project: talos/, sandbox/ and pihole/ each own their own
+# The repo is split by project: homelab/, sandbox/ and pihole/ each own their own
 # infrastructure. Everything that needs a path goes through here, so moving a
 # project is one edit rather than a grep across the CLI.
 
-def talos_dir() -> Path:
-    return repo_root() / "talos"
+def homelab_dir() -> Path:
+    return repo_root() / "homelab"
 
 
 def kubernetes_dir() -> Path:
-    return talos_dir() / "kubernetes"
+    return homelab_dir() / "kubernetes"
 
 
 def terraform_dir() -> Path:
-    return talos_dir() / "terraform"
+    return homelab_dir() / "terraform"
 
 
 def scripts_dir() -> Path:
-    return talos_dir() / "scripts"
+    return homelab_dir() / "scripts"
 
 
 def pihole_dir() -> Path:

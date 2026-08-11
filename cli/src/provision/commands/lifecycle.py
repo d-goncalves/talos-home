@@ -13,7 +13,7 @@ from ..shell import CommandError
 def sync() -> None:
     """Regenerate everything provision.toml drives.
 
-    Writes talos/terraform/terraform.tfvars.json, talos/kubernetes/apps/kustomization.yaml
+    Writes homelab/terraform/terraform.tfvars.json, homelab/kubernetes/apps/kustomization.yaml
     and pihole/ansible/inventory.yml. Safe to run any time.
     """
     unfilled = settings.unfilled()
@@ -32,9 +32,9 @@ def sync() -> None:
         fail(f"[apps] declares '{name}' but kubernetes/apps/{name}/ does not exist")
 
     if kustomize.write(apps):
-        success("wrote talos/kubernetes/apps/kustomization.yaml")
+        success("wrote homelab/kubernetes/apps/kustomization.yaml")
     else:
-        info("talos/kubernetes/apps/kustomization.yaml already up to date")
+        info("homelab/kubernetes/apps/kustomization.yaml already up to date")
 
     if settings.pihole_hosts():
         if settings.write_inventory():
@@ -44,9 +44,9 @@ def sync() -> None:
 
     if not unfilled:
         if settings.write_tfvars():
-            success("wrote talos/terraform/terraform.tfvars.json")
+            success("wrote homelab/terraform/terraform.tfvars.json")
         else:
-            info("talos/terraform/terraform.tfvars.json already up to date")
+            info("homelab/terraform/terraform.tfvars.json already up to date")
 
 
 @click.command("init")

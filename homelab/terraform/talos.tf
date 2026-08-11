@@ -3,7 +3,7 @@
 # This resource generates the cluster CA, etcd CA, bootstrap tokens and the
 # secretbox encryption key. All of it lands in terraform.tfstate in plaintext.
 # It is the same material that currently sits in the gitignored
-# talos/machine-config/controlplane.yaml.
+# homelab/machine-config/controlplane.yaml.
 resource "talos_machine_secrets" "this" {
   talos_version = var.talos_version
 }

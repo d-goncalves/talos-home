@@ -115,7 +115,7 @@ node_attr = {"fontsize": "13", "fontcolor": "#24292f"}
 # ── Diagram ───────────────────────────────────────────────────────────────────
 
 DOT_TMP  = "/tmp/arch_tmp"
-PNG_OUT  = "/Users/diogo/talos/docs/architecture"
+PNG_OUT  = "/Users/diogo/homelab/docs/architecture"
 
 with Diagram(
     "",

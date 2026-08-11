@@ -1,4 +1,4 @@
-"""Generate talos/kubernetes/apps/kustomization.yaml from provision.toml."""
+"""Generate homelab/kubernetes/apps/kustomization.yaml from provision.toml."""
 
 from __future__ import annotations
 

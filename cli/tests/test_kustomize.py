@@ -132,7 +132,7 @@ def test_write_returns_a_bool_not_a_tuple(tmp_path, monkeypatch):
     """Regression: write() returned a tuple, callers unpacked it, and the
     signature change broke `apps enable/disable` at runtime."""
     monkeypatch.setattr(settings, "repo_root", lambda: tmp_path)
-    (tmp_path / "talos" / "kubernetes" / "apps").mkdir(parents=True)
+    (tmp_path / "homelab" / "kubernetes" / "apps").mkdir(parents=True)
 
     first = kustomize.write(ALL_ON)
     assert isinstance(first, bool) and first is True

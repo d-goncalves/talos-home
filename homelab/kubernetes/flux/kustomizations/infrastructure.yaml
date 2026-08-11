@@ -5,7 +5,7 @@ metadata:
   namespace: flux-system
 spec:
   interval: 10m
-  path: ./talos/kubernetes/infrastructure
+  path: ./homelab/kubernetes/infrastructure
   prune: true
   sourceRef:
     kind: GitRepository
