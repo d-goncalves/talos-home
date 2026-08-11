@@ -168,6 +168,9 @@ trap: app admin passwords are only read when the account is first created.
 Recovering a wiped node is the same operation as provisioning a new one.
 
 ### Prerequisites
+
+A Proxmox host prepared as in [docs/proxmox.md](docs/proxmox.md) — API token,
+storage content types, host SSH.
 - NAS online — all NFS-backed app data lives there
 - 1Password unlocked (`OP_ACCOUNT` or `OP_SERVICE_ACCOUNT_TOKEN`)
 - Proxmox reachable

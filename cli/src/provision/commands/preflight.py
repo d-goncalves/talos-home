@@ -80,6 +80,123 @@ def nfs_export_problems() -> list[str]:
     return problems
 
 
+# Privileges the stack actually exercises. Snapshot ones are listed separately
+# because only `sandbox reset` needs them — everything else works without.
+PVE_PRIVILEGES = (
+    "VM.Allocate", "VM.Audit", "VM.Clone", "VM.PowerMgmt", "VM.Migrate",
+    "VM.Config.CDROM", "VM.Config.CPU", "VM.Config.Cloudinit", "VM.Config.Disk",
+    "VM.Config.HWType", "VM.Config.Memory", "VM.Config.Network",
+    "VM.Config.Options", "VM.GuestAgent.Audit",
+    "Datastore.Allocate", "Datastore.AllocateSpace",
+    "Datastore.AllocateTemplate", "Datastore.Audit",
+    "Sys.Audit", "Sys.Modify",
+)
+PVE_PRIVILEGES_SANDBOX = ("VM.Snapshot", "VM.Snapshot.Rollback")
+
+
+def proxmox_problems() -> tuple[list[str], list[str]]:
+    """Check Proxmox is set up the way the stack assumes.
+
+    None of this is Terraform-managed — the token, its role, the storage
+    content types and host SSH are all prepared by hand before a first run. Each
+    one otherwise surfaces as a failure partway through an apply, which is a bad
+    place to discover that a role is missing one privilege.
+
+    Returns (problems, warnings).
+    """
+    from ..proxmox import ProxmoxError, connect
+
+    cfg = settings.load()
+    pve = cfg.get("proxmox") or {}
+    problems: list[str] = []
+    warnings: list[str] = []
+
+    try:
+        api = connect()
+        version = api.get("/version")["version"]
+    except (ProxmoxError, SystemExit) as exc:
+        return [f"cannot reach the Proxmox API at {pve.get('endpoint')}: {exc}"], []
+    success(f"Proxmox {version} reachable")
+
+    # ── Token privileges ──────────────────────────────────────────────────
+    try:
+        granted = {k for k, v in (api.get("/access/permissions") or {}).get("/", {}).items() if v}
+    except ProxmoxError as exc:
+        return [f"could not read token privileges: {exc}"], []
+
+    missing = [p for p in PVE_PRIVILEGES if p not in granted]
+    if missing:
+        problems.append(
+            "Proxmox token is missing privileges: " + ", ".join(missing)
+            + " — see docs/proxmox.md"
+        )
+    else:
+        success(f"Proxmox token has the {len(PVE_PRIVILEGES)} privileges the cluster needs")
+
+    missing_snap = [p for p in PVE_PRIVILEGES_SANDBOX if p not in granted]
+    if missing_snap:
+        warnings.append(
+            "token lacks " + ", ".join(missing_snap) + " — `sandbox reset` will not work"
+        )
+
+    # ── Storage content types ─────────────────────────────────────────────
+    node = pve.get("node_name", "pve")
+    wanted = {pve.get("iso_datastore_id", "local"): {"iso"}}
+    for body in (cfg.get("nodes") or {}).values():
+        if body.get("datastore_id"):
+            wanted.setdefault(body["datastore_id"], set()).add("images")
+
+    for store, needs in wanted.items():
+        try:
+            content = set((api.get(f"/nodes/{node}/storage/{store}/status") or {}).get("content", "").split(","))
+        except ProxmoxError:
+            problems.append(f"Proxmox storage '{store}' not found on node '{node}'")
+            continue
+        gap = needs - content
+        if gap:
+            problems.append(
+                f"Proxmox storage '{store}' does not allow {', '.join(sorted(gap))} "
+                f"(has: {', '.join(sorted(c for c in content if c))})"
+            )
+        else:
+            success(f"storage '{store}' allows {', '.join(sorted(needs))}")
+
+    # ── Sandbox extras: warn, never block ─────────────────────────────────
+    if cfg.get("sandbox"):
+        store = "local"
+        try:
+            content = set((api.get(f"/nodes/{node}/storage/{store}/status") or {}).get("content", "").split(","))
+        except ProxmoxError:
+            content = set()
+        for kind, why in (("import", "`sandbox template` cannot import the cloud image"),
+                          ("snippets", "the sandbox console will have no autologin")):
+            if kind not in content:
+                warnings.append(
+                    f"storage '{store}' does not allow '{kind}' — {why}. Fix with: "
+                    f"pvesm set {store} --content {','.join(sorted(content | {kind}))}"
+                )
+
+    # ── Host SSH ──────────────────────────────────────────────────────────
+    host = (pve.get("endpoint") or "").split("//")[-1].split(":")[0]
+    user = pve.get("ssh_username", "root")
+    if host:
+        ok, _ = try_run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
+             f"{user}@{host}", "true"], capture=True, echo=False)
+        if ok:
+            success(f"ssh {user}@{host} works")
+        else:
+            keys = run(["ssh-add", "-L"], capture=True, echo=False, check=False)
+            loaded = len([k for k in keys.splitlines() if k.startswith(("ssh-", "ecdsa-", "sk-"))])
+            problems.append(
+                f"cannot ssh {user}@{host} — Terraform needs it for disk import, "
+                f"and the sandbox for its cloud-init snippet "
+                f"({loaded} key(s) in the agent; if that looks short, unlock 1Password)"
+            )
+
+    return problems, warnings
+
+
 @click.command("preflight")
 def preflight() -> None:
     """Verify tooling, credentials and config before provisioning."""
@@ -143,6 +260,14 @@ def preflight() -> None:
     else:
         warn("no terraform state yet — this would be a fresh provision")
 
+    # ── Proxmox ───────────────────────────────────────────────────────────
+    warnings: list[str] = []
+    if which("op"):
+        pve_problems, warnings = proxmox_problems()
+        problems.extend(pve_problems)
+    else:
+        warn("skipping Proxmox checks — the API token is read from 1Password")
+
     # ── NAS export allow-list ─────────────────────────────────────────────
     nfs = nfs_export_problems()
     if nfs:
@@ -152,6 +277,8 @@ def preflight() -> None:
 
     # ── Verdict ───────────────────────────────────────────────────────────
     click.echo()
+    for item in warnings:
+        click.echo(f"  {click.style('!', fg='yellow')} {item}")
     if problems:
         for problem in problems:
             click.echo(f"  {click.style('✗', fg='red')} {problem}")

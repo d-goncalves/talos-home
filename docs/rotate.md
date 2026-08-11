@@ -18,7 +18,7 @@ item and you are done; the next apply uses the new value.
 | Secret | 1Password item |
 |---|---|
 | healthchecks.io API key | `Healthchecks.io - talos-home` |
-| Proxmox API token | `Proxmox API - talos-home` |
+| Proxmox API token | `Proxmox API - talos-home` — role setup in [proxmox.md](proxmox.md) |
 | Tailscale OAuth client | `Tailscale Talos` |
 | UniFi local admin | `UniFi Local Admin - talos-home` |
 
