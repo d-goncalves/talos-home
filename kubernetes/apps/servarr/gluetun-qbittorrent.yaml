@@ -85,7 +85,7 @@ spec:
             - name: tun
               mountPath: /dev/net/tun
         - name: qbittorrent
-          image: lscr.io/linuxserver/qbittorrent:latest
+          image: lscr.io/linuxserver/qbittorrent:5.2.3_v2.0.13-ls470
           env:
             - name: PUID
               value: "1000"
