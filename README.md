@@ -78,6 +78,8 @@ scripts/
   deploy-gitea.sh  # Gitea helm deploy (not a Flux HelmRelease — see the script)
 docs/
   rotate.md        # how to rotate every secret, and what needs re-applying
+  inventory.md     # what is running, what is pinned, and what still floats
+  proxmox.md       # preparing a host: API token, storage, SSH
   draw_arch.py     # generates architecture.png (requires pip install -r docs/requirements.txt)
   architecture.png # rendered diagram
 ```
