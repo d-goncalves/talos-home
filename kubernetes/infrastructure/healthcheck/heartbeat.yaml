@@ -1,0 +1,83 @@
+# The cluster's heartbeat to an external dead-man's switch.
+#
+# Uptime Kuma answers "is an app down?" well, but it cannot answer "is the
+# cluster down?" — it dies with the thing it watches, and so does ntfy, which
+# is why a multi-hour outage went unannounced. This inverts it: the cluster
+# calls out every five minutes, and healthchecks.io alerts when the calls stop.
+#
+# Nothing reaches in. That matters here, because everything is tailnet-only and
+# an external prober could not see the services even if one existed.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: healthcheck-ping
+  namespace: kube-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword
+    kind: ClusterSecretStore
+  target:
+    name: healthcheck-ping
+  data:
+    # Only the ping URL, never the API key that also lives on this item: the
+    # cluster has no business being able to reconfigure its own watchdog.
+    - secretKey: ping_url
+      remoteRef:
+        key: <item-id> # Healthchecks.io - talos-home
+        property: ping_url
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: healthcheck-heartbeat
+  namespace: kube-system
+spec:
+  schedule: "*/5 * * * *"
+  # A missed beat is not worth queueing a second pod for — the next one is
+  # five minutes away, and the grace period is fifteen.
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 120
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 900
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+          containers:
+            - name: ping
+              image: curlimages/curl:8.11.1
+              args:
+                - --fail
+                - --silent
+                - --show-error
+                - --max-time
+                - "20"
+                - --retry
+                - "3"
+                - --retry-delay
+                - "5"
+                - $(PING_URL)
+              env:
+                - name: PING_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: healthcheck-ping
+                      key: ping_url
+              resources:
+                requests:
+                  cpu: 5m
+                  memory: 16Mi
+                limits:
+                  memory: 32Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]

@@ -36,5 +36,9 @@ terraform {
       source  = "1Password/onepassword"
       version = "~> 2.1"
     }
+    healthchecksio = {
+      source  = "kristofferahl/healthchecksio"
+      version = "~> 2.3"
+    }
   }
 }

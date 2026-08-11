@@ -15,6 +15,12 @@ variable "op_item_proxmox" {
   default     = "Proxmox API - talos-home"
 }
 
+variable "op_item_healthchecksio" {
+  description = "1Password item whose credential is the healthchecks.io read-write API key"
+  type        = string
+  default     = "Healthchecks.io - talos-home"
+}
+
 variable "op_item_tailscale" {
   description = "1Password item with the Tailscale OAuth client (username = client ID, password = tskey-client-… secret)"
   type        = string

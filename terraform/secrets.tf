@@ -53,4 +53,16 @@ locals {
 
   unifi_username = var.unifi_enabled ? data.onepassword_item.unifi[0].username : ""
   unifi_password = var.unifi_enabled ? data.onepassword_item.unifi[0].password : ""
+
+  healthchecksio_api_key = coalesce(
+    data.onepassword_item.healthchecksio.credential,
+    data.onepassword_item.healthchecksio.password,
+  )
+}
+
+# Read-write API key, stored as the item's credential field. Used only to
+# manage the dead-man's-switch check; it has no access to anything else.
+data "onepassword_item" "healthchecksio" {
+  vault = data.onepassword_vault.infra.uuid
+  title = var.op_item_healthchecksio
 }

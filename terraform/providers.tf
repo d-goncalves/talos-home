@@ -60,3 +60,7 @@ provider "unifi" {
   username = var.unifi_enabled ? local.unifi_username : null
   password = var.unifi_enabled ? local.unifi_password : null
 }
+
+provider "healthchecksio" {
+  api_key = local.healthchecksio_api_key
+}

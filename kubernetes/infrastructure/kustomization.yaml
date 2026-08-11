@@ -5,5 +5,6 @@ resources:
   - tailscale-operator/
   - nfs-csi/
   - metrics-server/
+  - healthcheck/
   - coredns/
   - external-secrets/
