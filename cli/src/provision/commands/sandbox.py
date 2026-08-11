@@ -1,23 +1,10 @@
 """Disposable Ubuntu VM for testing packages you do not trust.
 
-The intended sequence is:
+    template -> new -> [install] -> offline -> console -> reset -> destroy
 
-    provision sandbox template          # once, builds the golden image
-    provision sandbox new               # clone, boot, cloud-init
-    ... install the thing you want to look at ...
-    provision sandbox offline           # unplug the virtual cable
-    provision sandbox console           # the only way in once offline
-    provision sandbox reset             # back to the clean snapshot
-    provision sandbox destroy
-
-`offline` disconnects the NIC rather than deleting it, which is the moral
-equivalent of unplugging the cable: the VM keeps its config and can be
-reconnected without a reboot.
-
-A caveat worth stating plainly: cutting the link afterwards does not undo
-anything that ran during install. If a package is actively malicious, the
-install is the dangerous moment, and it happens while the VM is on your LAN.
-Use `new --offline` plus `payload` when that matters.
+`offline` drops the NIC's carrier rather than deleting it, so the VM keeps its
+config. Note it does not undo anything that ran during install: use
+`new --offline` with a `payload` when that matters.
 """
 
 from __future__ import annotations
@@ -39,29 +26,19 @@ from ..proxmox import Proxmox, ProxmoxError, connect
 # fresh clone. Rolling back is seconds; cloning is a disk copy.
 CLEAN_SNAPSHOT = "clean"
 
-# SCSI rather than IDE: an IDE CD-ROM added to a running VM does not appear
-# until the next boot, and the cloud image has no guest agent so an ACPI reboot
-# is not reliable either. On the virtio-scsi controller the drive hotplugs, so
-# the payload shows up as /dev/sr1 within seconds and no restart is needed.
-# ide2 is cloud-init's own drive and is left alone.
+# SCSI, not IDE: an IDE CD-ROM added to a running VM only appears after a
+# reboot. On virtio-scsi it hotplugs. ide2 is cloud-init's own drive.
 PAYLOAD_SLOT = "scsi1"
 PAYLOAD_ISO = "sandbox-payload.iso"
 
 # Cloud-init user-data, uploaded as a Proxmox snippet.
 #
-# The sandbox authenticates over SSH with a key and has no password, which is
-# what you want over the network — but it left the serial console asking for a
-# password nobody has, and the console is the *only* way in once the NIC is
-# disconnected. So the console logs straight in.
-#
-# That is not the security hole it looks like: reaching this console at all
-# requires root on the Proxmox host, and anyone with that can already do
-# anything to the VM. A password here would be a credential to manage, leak and
-# rotate, in a repo that is public, in exchange for no real boundary.
-# Note this must also create the user and install the keys: `cicustom user=`
-# replaces the user-data Proxmox would otherwise generate, so ciuser and
-# sshkeys stop having any effect once it is set. Getting that wrong produces a
-# VM you can reach by neither SSH nor console.
+# The console logs straight in because SSH uses keys and there is no password —
+# which would otherwise leave the serial console, the only way in once offline,
+# asking for one nobody has. Reaching that console needs root on the Proxmox
+# host, so a password would buy no real boundary.
+# Must create the user and install the keys itself: `cicustom user=` replaces
+# the generated user-data, so ciuser and sshkeys stop having any effect.
 SNIPPET_NAME = "sandbox-user-data.yaml"
 USER_DATA = """\
 #cloud-config
@@ -86,19 +63,11 @@ write_files:
       [Service]
       ExecStart=
       ExecStart=-/sbin/agetty --autologin {username} --noclear --keep-baud 115200,38400,9600 %I $TERM
-  # Own the network outright rather than patching what cloud-init generates.
-  #
-  # Proxmox writes its network-config against the interface name `eth0`, but
-  # this image names the NIC `ens18`. The rename that would reconcile them
-  # lives in a .link file, and .link files only apply when udev first sees the
-  # device -- by the time cloud-init writes one, that moment has passed. So
-  # netplan's [Match] carries Name=eth0, matches nothing, and the interface
-  # ends up *unmanaged*: fine at first boot because cloud-init configures it
-  # directly, but nothing reconfigures it after a carrier event.
-  #
-  # Matching en* sidesteps the naming entirely, and 05- sorts ahead of
-  # netplan's 10- so this wins if both ever match. IgnoreCarrierLoss keeps the
-  # address across `sandbox offline`, so `online` needs no reboot.
+  # Own the network rather than patching cloud-init's. Proxmox writes its
+  # config against `eth0` while the image names the NIC `ens18`, so netplan
+  # matches nothing and the interface is left unmanaged — fine at first boot,
+  # but it never recovers from a carrier drop. Matching en* sidesteps the
+  # naming; IgnoreCarrierLoss is what lets `online` work without a reboot.
   - path: /etc/systemd/network/05-sandbox.network
     permissions: '0644'
     content: |
@@ -133,12 +102,10 @@ def _pve_ssh_target() -> tuple[str, str]:
 
 
 def _upload_snippet(box: settings.Sandbox) -> str | None:
-    """Put the cloud-init user-data on the host, returning its volume id.
+    """Upload the cloud-init user-data, returning its volume id.
 
-    Snippets are the one thing the Proxmox API will not upload — its upload
-    endpoint only accepts iso, vztmpl and import — so this goes over SSH. If
-    that is not available the sandbox still works; it just gets no console
-    autologin, so say so rather than failing the whole command.
+    Snippets are the one content type the Proxmox API will not upload, so this
+    goes over SSH. Without it the sandbox still builds, minus console login.
     """
     user, host = _pve_ssh_target()
     if not host:
@@ -171,13 +138,8 @@ def _upload_snippet(box: settings.Sandbox) -> str | None:
 
 
 def _import_filename(url: str) -> str:
-    """Local name for the downloaded cloud image.
-
-    Proxmox validates the extension on import-content uploads and rejects
-    `.img`, which is exactly what Ubuntu names its cloud images even though
-    they are qcow2 underneath. Store it under the name that matches what it
-    actually is.
-    """
+    """Proxmox rejects `.img` for import content, which is what Ubuntu calls
+    its qcow2 cloud images. Store it under the name it actually is."""
     name = url.rsplit("/", 1)[-1]
     if name.endswith(".img"):
         return name[: -len(".img")] + ".qcow2"
@@ -185,12 +147,8 @@ def _import_filename(url: str) -> str:
 
 
 def _ssh_key_list(box: settings.Sandbox) -> list[str]:
-    """Public keys to authorise for the sandbox user.
-
-    Without one the account has no password and no key, and the only way in is
-    the console. These are public keys, so taking them from the agent leaks
-    nothing.
-    """
+    """Public keys for the sandbox user. Taken from the agent by default —
+    they are public keys, so this leaks nothing."""
     value = (box.ssh_keys or "").strip()
     if value and value != "auto":
         candidate = Path(value).expanduser()

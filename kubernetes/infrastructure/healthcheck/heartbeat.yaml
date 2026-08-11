@@ -1,12 +1,7 @@
-# The cluster's heartbeat to an external dead-man's switch.
-#
-# Uptime Kuma answers "is an app down?" well, but it cannot answer "is the
-# cluster down?" — it dies with the thing it watches, and so does ntfy, which
-# is why a multi-hour outage went unannounced. This inverts it: the cluster
-# calls out every five minutes, and healthchecks.io alerts when the calls stop.
-#
-# Nothing reaches in. That matters here, because everything is tailnet-only and
-# an external prober could not see the services even if one existed.
+# Heartbeat to an external dead-man's switch. Uptime Kuma dies with the cluster
+# it watches, so it cannot report the cluster being down; this calls out every
+# five minutes and healthchecks.io alerts when the calls stop. Nothing reaches
+# in, which is what makes it work with a tailnet-only setup.
 apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
@@ -20,14 +15,11 @@ spec:
   target:
     name: healthcheck-ping
   data:
-    # Only the ping URL, never the API key that also lives on this item: the
-    # cluster has no business being able to reconfigure its own watchdog.
+    # Only the ping URL, never the API key on the same item — the cluster
+    # should not be able to reconfigure its own watchdog.
     #
-    # Key format is <item-id>/<field>, not the bare item id used by
-    # `dataFrom: extract` elsewhere here. The store already pins the vault, so
-    # the onepasswordSDK provider builds op://<vault>/<key> itself: an id on
-    # its own resolves to op://vault/item with no field and is rejected as
-    # malformed, and passing a full op:// URI nests one inside another.
+    # <item-id>/<field>, not the bare id `dataFrom: extract` takes: the store
+    # pins the vault, so the provider builds op://<vault>/<key> itself.
     - secretKey: ping_url
       remoteRef:
         key: <item-id>/ping_url # Healthchecks.io - talos-home
@@ -39,8 +31,7 @@ metadata:
   namespace: kube-system
 spec:
   schedule: "*/5 * * * *"
-  # A missed beat is not worth queueing a second pod for — the next one is
-  # five minutes away, and the grace period is fifteen.
+  # A missed beat is not worth queueing for: grace is 15 minutes.
   concurrencyPolicy: Forbid
   startingDeadlineSeconds: 120
   successfulJobsHistoryLimit: 1

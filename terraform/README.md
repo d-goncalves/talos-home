@@ -20,30 +20,15 @@ Terraform stops at a healthy, empty cluster. Flux takes it from there.
 
 ## Secrets
 
-Terraform fetches credentials from 1Password itself via the
-[`1Password/onepassword`](https://registry.terraform.io/providers/1Password/onepassword)
-provider — see [secrets.tf](secrets.tf). No credential appears in any committed
-file, which is what makes this repo publishable.
-
-| 1Password item (`Server Infrastructure`) | Fields used |
-|---|---|
-| `Proxmox API - talos-home` | `password` = `USER@REALM!TOKENID=UUID` |
-| `Tailscale OAuth - talos-home` | `username` = client ID, `password` = client secret |
-| `UniFi Local Admin - talos-home` | `username`, `password` (only when `unifi_enabled`) |
-
-Authentication is environment-only, either works:
-
-```bash
-export OP_SERVICE_ACCOUNT_TOKEN=...   # same kind of token ESO uses
-export OP_ACCOUNT=my.1password.com    # desktop app, unlocks with biometrics
-```
-
-`provision` passes through whichever account `op` is signed in to if neither is
-set.
+Read from 1Password at plan time via the `onepassword` provider, so no
+credential is written to any file here. Authenticate with
+`OP_SERVICE_ACCOUNT_TOKEN` or `OP_ACCOUNT`, then:
 
 ```bash
 ./provision homelab secrets check
 ```
+
+Rotating any of them: [docs/rotate.md](../docs/rotate.md).
 
 ## Configuration
 

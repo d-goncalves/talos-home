@@ -100,43 +100,26 @@ truth. Two files are generated from it and should never be hand-edited:
 
 ## Turning apps off to free resources
 
-```toml
-[apps]
-adventurelog = false
-immich       = true
-```
-
 ```bash
+./provision homelab apps protect              # once, before the first disable
 ./provision homelab apps disable adventurelog
-git commit -am "disable adventurelog" && git push
 ```
 
-Flux prunes the Deployments, StatefulSets, Services and Ingresses, and the CPU
-and memory come back. Namespaces, PVCs and PVs are annotated prune-exempt, so
-the data stays and `provision homelab apps enable adventurelog` reattaches the same
-volumes.
-
-> **Run `provision homelab apps protect` once first.** Flux reads the prune-exempt
-> annotation from the object *in the cluster*, not from git. Objects applied
-> before this protection existed do not carry it yet and would be pruned on the
-> first disable. `apps disable` refuses to run until it can verify the live
-> Namespace and PVCs are annotated; `--force` overrides.
-
-Enable and disable edit `provision.toml` in place, preserving comments.
+Data survives: namespaces, PVCs and PVs are annotated prune-exempt, so
+re-enabling reattaches the same volumes. See the README for why `protect` has
+to run first.
 
 ## Secrets
 
-The CLI never handles a secret value. Terraform reads credentials from 1Password
-itself through the `onepassword` provider, and ESO does the same in-cluster.
+The CLI never handles secret values. Terraform reads 1Password itself, and ESO
+does the same in-cluster.
 
 ```bash
 ./provision homelab secrets list    # what is expected, and what reads it
 ./provision homelab secrets check   # verify presence — never prints values
 ```
 
-Authentication is environment-only. Set `OP_SERVICE_ACCOUNT_TOKEN`, or
-`OP_ACCOUNT` for desktop biometrics; if neither is set the CLI passes through
-whichever account `op` is signed in to.
+Rotating any of them: [docs/rotate.md](../docs/rotate.md).
 
 ## Tests
 

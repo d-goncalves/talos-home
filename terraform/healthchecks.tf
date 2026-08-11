@@ -1,21 +1,9 @@
-# ── Dead-man's switch ─────────────────────────────────────────────────────────
-#
-# Uptime Kuma and ntfy both run on the cluster they watch, so when the cluster
-# died the monitor, the notifier and the subject all went down together and
-# nothing was reported. A watchdog inside the box cannot report the box being
-# dead.
-#
-# This inverts the dependency: a CronJob in the cluster pings healthchecks.io
-# every five minutes, and if the pings stop, healthchecks.io says so. Silence
-# becomes the signal, and the alerting path shares nothing with the cluster --
-# not the hardware, not the network, not the notifier.
-#
-# It is also the only shape of external monitoring that works here: nothing
-# needs to reach in past the tailnet, because the cluster calls out.
+# Dead-man's switch. Uptime Kuma and ntfy both die with the cluster they watch,
+# so a CronJob pings this every five minutes and healthchecks.io alerts when the
+# pings stop. See kubernetes/infrastructure/healthcheck/.
 
-# Channels cannot be created through the API — the provider only reads them —
-# so notification integrations are set up in the healthchecks.io UI and looked
-# up here by kind.
+# Channels cannot be created through the API, only read, so the notification
+# integration is set up in the UI and looked up here by kind.
 data "healthchecksio_channel" "email" {
   kind = "email"
 }
@@ -26,10 +14,8 @@ resource "healthchecksio_check" "cluster" {
 
   tags = ["homelab", "talos", var.cluster_name]
 
-  # Expect a ping every 5 minutes, but do not alert until 15 have passed. A
-  # node reboot or a Flux reconcile can comfortably eat two intervals, and an
-  # alert that cries wolf during routine maintenance is one you learn to
-  # ignore.
+  # 5 minute period, 15 minute grace: a reboot or a slow reconcile eats two
+  # intervals, and an alert that fires during maintenance gets ignored.
   timeout = 5 * 60
   grace   = 15 * 60
 
@@ -38,10 +24,8 @@ resource "healthchecksio_check" "cluster" {
   ]
 }
 
-# The ping URL embeds the check's UUID, so it is a credential in its own right:
-# anyone holding it can fake a heartbeat. It is deliberately not committed —
-# `provision homelab output` prints it, and it is stored in 1Password for the
-# ExternalSecret that feeds the CronJob.
+# The ping URL embeds the check UUID, so it is a credential — anyone with it
+# can fake a heartbeat. Stored in 1Password for the CronJob's ExternalSecret.
 output "healthcheck_ping_url" {
   value       = healthchecksio_check.cluster.ping_url
   description = "Ping URL for the cluster dead-man's switch."

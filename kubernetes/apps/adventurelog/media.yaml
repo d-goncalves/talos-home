@@ -1,13 +1,6 @@
-# Serves uploaded images so the backend does not have to.
-#
-# Django refuses to serve MEDIA_URL when DEBUG is off, by design — it wants a
-# real web server doing it. The app had been getting away with DEBUG=True,
-# which also renders full tracebacks (locals, settings, SQL) to anyone who
-# triggers an error. This exists so DEBUG can be turned off without photos
-# turning into 404s.
-#
-# Static files need no equivalent: WhiteNoise is already in the middleware and
-# serves /static regardless of DEBUG.
+# Serves uploaded images, because Django refuses to serve MEDIA_URL once DEBUG
+# is off. Without this, turning DEBUG off turns every photo into a 404.
+# /static needs no equivalent — WhiteNoise already handles it.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,25 +19,23 @@ spec:
         app: adventurelog-media
     spec:
       securityContext:
-        # The NAS squashes everything to 977:988 and /code/media is mode 2770,
-        # so "others" cannot even traverse it. Without this the container reads
-        # nothing. fsGroup is ignored by NFS but supplementalGroups is not.
+        # /code/media is mode 2770 owned 977:988, so "others" cannot traverse
+        # it. NFS ignores fsGroup but honours supplementalGroups.
         runAsUser: 977
         runAsGroup: 988
         fsGroup: 988
         supplementalGroups: [988]
       containers:
         - name: nginx
-          # The unprivileged image listens on 8080 and keeps its temp paths
-          # under /tmp, so it runs happily as an arbitrary uid.
+          # Unprivileged image: listens on 8080, temp paths under /tmp.
           image: nginxinc/nginx-unprivileged:1.27-alpine
           ports:
             - containerPort: 8080
               name: http
           volumeMounts:
             - name: media
-              # Requests arrive as /media/<path>, and nginx's default root is
-              # /usr/share/nginx/html, so the volume goes at .../html/media.
+              # Requests arrive as /media/<path> and nginx's root is
+              # /usr/share/nginx/html, hence the mount path.
               mountPath: /usr/share/nginx/html/media
               readOnly: true
           resources:

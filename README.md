@@ -10,7 +10,7 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 | Hypervisor | Proxmox |
 | GitOps | FluxCD + Gitea |
 | Ingress | Tailscale Operator |
-| Storage | local-path (node) · NFS (Unifi NAS) |
+| Storage | NFS (Unifi NAS) — everything durable · local-path only for disposable caches |
 
 ## Apps
 
@@ -38,7 +38,7 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 | [Outline](https://www.getoutline.com) | Wiki & docs |
 | [Uptime Kuma](https://uptime.kuma.pet) | Uptime monitoring |
 | [Ntfy](https://ntfy.sh) | Push notifications |
-| Grafana + Loki + Prometheus | Metrics & logs |
+| Grafana + Loki + Prometheus | Metrics & logs — **disabled**, see `[apps]` in provision.toml |
 
 ## Architecture
 
@@ -48,133 +48,17 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 
 > **Edge colours:** 🔵 blue = GitOps / networking · 🟢 green = Flux reconcile · 🟣 purple = secrets · 🟡 yellow = NFS storage · 🔴 red = local-path storage
 
-<details>
-<summary>Mermaid source (text version)</summary>
-
-```mermaid
-graph TB
-    subgraph EXTERNAL["☁️ External"]
-        OP["1Password\n(cloud)"]
-        GH["GitHub\n(mirror)"]
-    end
-
-    subgraph NODE["🖥️ Talos Linux — &lt;node-ip&gt; (Proxmox VM)"]
-
-        subgraph GITOPS["GitOps Layer"]
-            GITEA["Gitea\n(source of truth)"]
-            FLUX["Flux CD"]
-            GITEA -->|"watches via SSH\ngitea-ssh.<tailnet>.ts.net"| FLUX
-        end
-
-        subgraph INFRA["Infrastructure Kustomization"]
-            TS_OP["Tailscale Operator"]
-            NFS_CSI["NFS CSI Driver"]
-            COREDNS["CoreDNS\n+ rewrite rule"]
-            ESO["External Secrets\nOperator"]
-        end
-
-        subgraph APPS["Apps Kustomization"]
-            direction LR
-            subgraph MEDIA["Media"]
-                JF["Jellyfin"]
-                JS["Jellyseerr"]
-            end
-            subgraph SERVARR_GRP["Servarr"]
-                SN["Sonarr"]
-                RD["Radarr"]
-                PR["Prowlarr"]
-                BZ["Bazarr"]
-                GL["Gluetun + qBittorrent"]
-            end
-            subgraph PERSONAL["Personal"]
-                IM["Immich"]
-                AB["Actual Budget"]
-                ABS["Audiobookshelf"]
-                WL["Wallos"]
-            end
-            subgraph INFRA_APPS["Infrastructure Apps"]
-                GR["Grafana + Loki + Prometheus"]
-                NT["ntfy"]
-                OL["Outline"]
-                UK["Uptime Kuma"]
-                HP["Homepage"]
-            end
-        end
-
-        subgraph NETWORK["Networking"]
-            TS_PROXY["Tailscale Proxies\n*.<tailnet>.ts.net"]
-            TS_OP --> TS_PROXY
-        end
-
-        subgraph STORAGE["Storage"]
-            NFS_PVC["NFS PVCs\n(app data — survives wipes)"]
-            LOCAL_PVC["local-path PVCs\n(metrics, monitors)"]
-            NFS_CSI --> NFS_PVC
-        end
-    end
-
-    subgraph NAS["🗄️ Unifi NAS — &lt;nas-ip&gt;"]
-        NFS_SRV["NFS Server"]
-    end
-
-    FLUX -->|"reconciles"| INFRA
-    FLUX -->|"reconciles"| APPS
-    GH -->|"push mirror"| GITEA
-    NFS_PVC <-->|"NFS mount"| NFS_SRV
-    APPS -->|"Ingress"| TS_PROXY
-
-    JF & SN & RD & PR & BZ & GL & IM & AB & ABS & WL & OL & GITEA -->|"NFS PVC"| NFS_PVC
-    GR & UK -->|"local-path PVC"| LOCAL_PVC
-```
-
-</details>
 
 ### Flux reconciliation order
 
-```mermaid
-graph LR
-    FS["flux-system\n(GitRepository + self)"]
-    INF["infrastructure\n(Tailscale, NFS, CoreDNS, ESO Helm)"]
-    STORE["external-secrets-store\n(ClusterSecretStore)"]
-    APPS["apps\n(all user-facing apps)"]
+`flux-system` → `infrastructure` → `external-secrets-store` → `apps`, each
+waiting on the last via `dependsOn`.
 
-    FS -->|"deploys"| INF
-    INF -->|"dependsOn"| STORE
-    STORE -->|"dependsOn"| APPS
+### Secrets
 
-    style FS fill:#4a4a6a,color:#fff
-    style INF fill:#2d5a8e,color:#fff
-    style STORE fill:#1a7a4a,color:#fff
-    style APPS fill:#7a3a1a,color:#fff
-```
-
-### Secret management
-
-```mermaid
-sequenceDiagram
-    participant OP as 1Password (cloud)
-    participant ESO as External Secrets Operator
-    participant CSS as ClusterSecretStore (onepasswordSDK)
-    participant ES as ExternalSecret
-    participant KS as Kubernetes Secret
-    participant APP as App Pod
-
-    note over ESO,CSS: Bootstrap (once, via recover.sh)<br/>kubectl create secret onepassword-service-account-token
-
-    ESO->>CSS: registers store using SA token
-    CSS->>OP: authenticates via service account token
-
-    note over ES,KS: Every refreshInterval (1h)
-
-    ESO->>ES: watches ExternalSecret resources
-    ES->>CSS: requests secret data
-    CSS->>OP: fetches item fields
-    OP-->>CSS: returns field values
-    CSS-->>ES: secret data
-    ESO->>KS: creates/updates Kubernetes Secret
-
-    APP->>KS: reads via secretKeyRef or envFrom
-```
+Nothing secret is committed. Terraform reads 1Password directly at plan time;
+in-cluster, External Secrets syncs the same vault into Kubernetes Secrets every
+hour. See [docs/rotate.md](docs/rotate.md).
 
 ## Repo structure
 
@@ -209,42 +93,32 @@ docs/
 | state | `terraform.tfstate`, backed up to 1Password | none |
 | lifetime | months | minutes |
 
-The sandbox deliberately has no Terraform state. It is created and destroyed
-several times an hour, so there is nothing worth tracking — and sharing no
-state with the cluster means a sandbox mistake cannot plan a change against the
-homelab.
+The sandbox holds no Terraform state, so a mistake there cannot plan a change
+against the cluster.
 
 ## Provisioning
 
-Terraform builds the node; Flux fills it. See [terraform/README.md](terraform/README.md)
-and [cli/README.md](cli/README.md).
+Terraform builds the node; Flux fills it.
 
 ```bash
 ./provision homelab up      # a machine from scratch, end to end
 ./provision homelab check   # is anything pending?
 ```
 
-`./provision` at the repo root is the only entrypoint. It creates a `.venv`
-inside the repo on first run, so nothing is installed into your global Python
-and the command cannot leak into other projects.
+`./provision` creates its own `.venv` on first run, so nothing installs
+globally. [provision.toml](provision.toml) is the single source of truth for
+everything non-secret; `terraform.tfvars.json` and
+`kubernetes/apps/kustomization.yaml` are generated from it.
 
-Terraform stops at a healthy, empty cluster. It does **not** manage NAS NFS
-exports — no UniFi API exposes UNAS shares, so those stay a one-time manual
-step in the UNAS UI and are consumed by the `nfs-csi` StorageClasses.
+NAS exports are not managed here — no UniFi API exposes UNAS shares, so those
+stay a one-time manual step and are consumed by the `nfs-csi` StorageClasses.
 
-[provision.toml](provision.toml) is the single source of truth for everything
-non-secret: cluster, network, nodes and which apps run. `terraform.tfvars.json`
-and `kubernetes/apps/kustomization.yaml` are generated from it.
+> Terraform state holds the cluster CA key, bootstrap tokens and the secretbox
+> key: `talos_machine_secrets` generates them, so they cannot come from
+> 1Password. State is gitignored — back it up with
+> `./provision homelab state backup` after every apply.
 
-**No credential appears anywhere in this repo.** Terraform reads them from
-1Password itself via the `onepassword` provider; ESO does the same in-cluster.
-Authenticate with `OP_SERVICE_ACCOUNT_TOKEN` or `OP_ACCOUNT`, then
-`provision homelab secrets check`.
-
-> Terraform state still contains the cluster CA private key, the bootstrap
-> tokens and the secretbox encryption key — `talos_machine_secrets` generates
-> them, so they cannot come from 1Password. State is gitignored; back it up
-> with `provision homelab state backup` after every apply.
+See [terraform/README.md](terraform/README.md) and [cli/README.md](cli/README.md).
 
 ## Turning apps on and off
 
@@ -256,13 +130,10 @@ Authenticate with `OP_SERVICE_ACCOUNT_TOKEN` or `OP_ACCOUNT`, then
 git commit -am "disable adventurelog" && git push
 ```
 
-Flux prunes the workloads and the memory comes back. Namespaces, PVCs and PVs
-are annotated prune-exempt, so data survives and `provision homelab apps enable` reattaches
-the same volumes.
-
-> Flux reads that annotation from the object **in the cluster**, not from git,
-> so it has to be applied before an app leaves the source. `provision homelab apps disable`
-> refuses to run until it can verify this.
+Namespaces, PVCs and PVs are annotated prune-exempt, so data survives and
+enabling reattaches the same volumes. Flux reads that annotation from the
+cluster, not from git, so `apps protect` has to run before an app leaves the
+source — `apps disable` refuses until it can verify this.
 
 ## The sandbox
 
@@ -275,50 +146,16 @@ machine you care about.
 ./provision sandbox payload ./stuff   # attach a directory as a read-only CD
 ./provision sandbox offline           # unplug the virtual cable
 ./provision sandbox console --serial  # the only way in once offline
-./provision sandbox reset             # back to the first-boot snapshot
 ./provision sandbox destroy
 ```
 
-`offline` sets `link_down` on the NIC, which is the moral equivalent of pulling
-the cable: the VM keeps its config and can be reconnected without a rebuild.
+`offline` drops the NIC's carrier rather than deleting it, so `online` brings it
+straight back. The payload is an ISO, so the guest cannot write to it and you
+never mount an untrusted filesystem on the host.
 
-The payload is an ISO, so it is read-only — whatever you are testing cannot
-write back to it, and you never mount an untrusted filesystem on the Proxmox
-host. It hotplugs onto the SCSI controller and appears as `/dev/sr1` within
-seconds, no reboot needed.
-
-Two things worth knowing:
-
-- **Cutting the link afterwards does not undo the install.** If a package is
-  actively malicious, the dangerous moment is `apt install`, which happens
-  while the VM is on the LAN. Use `new --offline` with a `payload` when that
-  matters.
-- **The snippet owns the network config.** Proxmox writes its cloud-init
-  network config against the interface name `eth0`, but the image names the NIC
-  `ens18`, and the `.link` file that would rename it only applies when udev
-  first sees the device. So netplan's config matches nothing and the interface
-  is left *unmanaged* — fine at first boot, but it never recovers from a
-  carrier drop. The snippet writes a `05-sandbox.network` matching `en*`
-  instead, with `IgnoreCarrierLoss`, which is what lets `online` work without a
-  reboot.
-
-`console --serial` attaches to the VM's serial console over SSH to the Proxmox
-host. It is the one route in once the NIC is disconnected, so it is what you
-want after `offline`. Exit with Ctrl-O.
-
-The console logs in on its own — there is no password to type, and none exists.
-SSH uses your agent's public keys; the console autologins. Reaching that
-console at all requires root on the Proxmox host, and anyone with that can
-already do anything to the VM, so a password would be a credential to manage
-and rotate in exchange for no real boundary. This is delivered as a cloud-init
-snippet, which is the one thing the Proxmox API cannot upload, so `new` copies
-it over SSH. Without host SSH the sandbox still builds — it just falls back to
-key-only access with no console login.
-
-`sandbox reset` rolls back to a snapshot taken at first boot — seconds, versus
-a full re-clone, and it discards anything the guest wrote. It needs
-`VM.Snapshot` and `VM.Snapshot.Rollback` on the API token's role; without them
-everything else still works and `new` warns once.
+Note that cutting the link afterwards does not undo the install — if a package
+is actively malicious, the dangerous moment is `apt install`. Use
+`new --offline` with a `payload` when that matters.
 
 ## Rotating secrets
 
@@ -374,26 +211,16 @@ whatever stopped it.
 
 ### What survives a full node wipe
 
-Verified against the live cluster, not assumed. Check it yourself with:
-`kubectl get pvc -A -o custom-columns=NS:.metadata.namespace,NAME:.metadata.name,SC:.spec.storageClassName`
+Everything except Immich's valkey cache. Every PVC that holds anything worth
+keeping is NFS-backed, including the servarr configs, Audiobookshelf metadata
+and Uptime Kuma's database. Check with:
 
-| Storage | What is on it | Survives a node wipe? |
-|---|---|---|
-| **NFS** | Immich (library + postgres), Outline (data + postgres), AdventureLog (media + postgres), Gitea repos, Wallos, Homebox, Audiobookshelf *audiobooks*, Actual Budget, servarr *media* | ✅ |
-| **local-path** | **All servarr app config** (Sonarr, Radarr, Prowlarr, Bazarr, Jellyfin, Jellyseerr, qBittorrent), Audiobookshelf *config + metadata*, Uptime Kuma, ntfy, Grafana, Prometheus, Loki, Immich valkey | ❌ |
+```bash
+kubectl get pvc -A -o custom-columns=SC:.spec.storageClassName,NS:.metadata.namespace,NAME:.metadata.name
+```
 
-> Earlier versions of this file claimed the servarr configs and Audiobookshelf
-> metadata were on NFS. They are not. Those apps keep their **media** on NFS but
-> their **configuration on local-path**, so a node rebuild loses indexers,
-> quality profiles, download clients and library metadata even though the files
-> themselves are intact.
-
-### Post-recovery manual steps
-
-- **Servarr** — re-add indexers, download clients and quality profiles
-- **Audiobookshelf** — library config and metadata need rebuilding
-- **Uptime Kuma** — monitors need re-adding
-- **Outline**, **ntfy**, **Immich**, **Gitea** — restore automatically ✅
+Verified by destroying the cluster and rebuilding it: apps came back with their
+data attached and nothing needed reconfiguring.
 
 ### After the NAS restarts
 
@@ -407,29 +234,3 @@ that protects data, but leaves processes kubelet cannot kill.
 Waits for the NAS, proves it is writable, then restarts only NFS-backed pods
 (16 at present, across 9 namespaces). Cleanest of all is to avoid the situation:
 scale those apps down before a planned NAS reboot.
-
-### Secrets management
-
-All app secrets are managed by [External Secrets Operator](https://external-secrets.io) and pulled from 1Password automatically. No secrets are stored in git.
-
-The following items must exist in the **Server Infrastructure** 1Password vault:
-
-| 1Password item | Used by |
-|---|---|
-| `1Password Service Account - talos-home` | ESO → 1Password auth (field: `token`) |
-| `Tailscale Auth Key - talos-home` | Talos Tailscale extension (field: `authkey`) |
-| `servarr` | WireGuard key, qBittorrent password, Sonarr/Radarr/Prowlarr API keys |
-| `AdventureLog - talos-home` | Django admin password, email, secret key, postgres password |
-| `Immich - talos-home` | Postgres password |
-| `Outline - talos-home` | Secret key, utils secret, postgres password, OIDC client credentials |
-| `Grafana - talos-home` | Grafana admin password |
-
-To rotate the ESO service account token, generate a new one at [1password.com](https://1password.com) → Integrations → Service Accounts, update the 1Password item, then re-run:
-
-```bash
-kubectl create secret generic onepassword-service-account-token \
-  --from-literal=token=<new-token> \
-  --namespace external-secrets \
-  --dry-run=client -o yaml | kubectl apply -f -
-```
-

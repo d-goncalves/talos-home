@@ -21,6 +21,31 @@ from diagrams.onprem.vcs import Github
 from diagrams.generic.storage import Storage
 
 ICONS = Path("/tmp/diagram_icons")
+ICON_SOURCE = "https://raw.githubusercontent.com/homarr-labs/dashboard-icons/main/png"
+
+# Upstream names that differ from the ones used here.
+ICON_ALIASES = {
+    "onepassword": "1password",
+    "adventurelog": "adventure-log",
+    "eso": "kubernetes",
+}
+
+
+def fetch(name: str) -> Path:
+    """Download an icon once, so this script runs without manual setup."""
+    import urllib.request
+
+    ICONS.mkdir(parents=True, exist_ok=True)
+    dest = ICONS / f"{name}.png"
+    if dest.exists():
+        return dest
+    try:
+        urllib.request.urlretrieve(f"{ICON_SOURCE}/{ICON_ALIASES.get(name, name)}.png", dest)
+    except Exception:
+        # Not every component has an upstream icon; a blank tile is better
+        # than a crash halfway through the diagram.
+        Image.new("RGBA", (128, 128), (200, 200, 200, 90)).save(dest)
+    return dest
 
 NODE_IP = os.environ.get("NODE_IP", "<node-ip>")
 NAS_IP  = os.environ.get("NAS_IP",  "<nas-ip>")
@@ -38,7 +63,7 @@ def make_tile(names: list[str], cols: int = 3, cell: int = 128, pad: int = 10) -
     tile = Image.new("RGBA", (w, h), (0, 0, 0, 0))
 
     for i, name in enumerate(names):
-        src = ICONS / f"{name}.png"
+        src = fetch(name)
         img = Image.open(src).convert("RGBA").resize((cell, cell), Image.LANCZOS)
         col = i % cols
         row = i // cols
@@ -53,7 +78,7 @@ def make_tile(names: list[str], cols: int = 3, cell: int = 128, pad: int = 10) -
 
 
 def icon(name: str, label: str = "") -> Custom:
-    return Custom(label, str(ICONS / f"{name}.png"))
+    return Custom(label, str(fetch(name)))
 
 
 def tile(names: list[str], label: str = "", cols: int = 3) -> Custom:
@@ -105,6 +130,7 @@ with Diagram(
     with Cluster("External", graph_attr=cluster_attr):
         op = icon("onepassword", "1Password")
         gh = icon("github",      "GitHub\nmirror")
+        hc = Storage("healthchecks.io\n(dead-man's switch)")
 
     # ── Talos cluster ─────────────────────────────────────────────────────────
     with Cluster(f"Talos Linux · {NODE_IP} (Proxmox VM)", graph_attr=outer_cluster):
@@ -116,6 +142,8 @@ with Diagram(
         with Cluster("Infrastructure", graph_attr=cluster_attr):
             nfs_csi = Storage("NFS CSI")
             eso     = icon("eso", "Ext. Secrets\nOperator")
+            metrics = Storage("metrics-server")
+            beat    = Storage("heartbeat\nCronJob")
 
         # Tailscale Operator lives inside the cluster but watches all app namespaces
         ts_op = icon("tailscale", "Tailscale\nOperator")
@@ -153,9 +181,12 @@ with Diagram(
 
     # ── Edges ─────────────────────────────────────────────────────────────────
     # GitOps
-    gh    >> Edge(label="push mirror", color="#0969da") >> gitea
+    gitea >> Edge(label="push mirror", color="#0969da") >> gh
     gitea >> Edge(label="SSH",         color="#0969da") >> flux
     flux  >> Edge(color="#1a7f37") >> [media, personal, infra_apps]
+
+    # Dead-man's switch: the cluster calls out, nothing reaches in
+    beat >> Edge(label="ping /5m", color="#cf222e", style="dashed") >> hc
 
     # Secrets
     op >> Edge(label="service account", color="#8250df", style="dashed") >> eso

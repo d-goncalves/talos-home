@@ -1,23 +1,14 @@
 #!/usr/bin/env bash
 #
-# Bare-machine bootstrap.
-#
-# This does the only two things ./provision cannot do for itself: put the
-# required tools on a machine that has none, and get the repo onto it. Once
-# those exist, `./provision up` owns the rest — provisioning the node, writing
-# kubeconfig/talosconfig, seeding cluster secrets and handing off to Flux.
+# Bare-machine bootstrap: installs the tools and clones the repo, then hands
+# off to ./provision. Standalone by necessity — the usual source of this repo
+# is Gitea, which runs on the cluster being recovered.
 #
 #     bash <(curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh)
 #
-# It is deliberately standalone: no repo-relative paths, no 1Password lookups,
-# nothing that assumes the cluster exists. That matters because the usual
-# source of this script is Gitea, which runs on the cluster it is recovering.
+# Requires the GitHub mirror to be public and current. If the repo is private,
+# clone it by hand and run ./provision homelab up from there.
 #
-# Previous versions of this script also generated Talos machine-config patches
-# and seeded Kubernetes secrets. Both now live in terraform/ and the CLI:
-# patches are rendered from provision.toml, and credentials are read straight
-# from 1Password by Terraform, so nothing is templated onto disk any more.
-
 set -euo pipefail
 
 GITHUB_REPO="https://github.com/d-goncalves/talos-home.git"
@@ -99,7 +90,12 @@ if [[ -d "$REPO_DIR/.git" ]]; then
   warn "Repo already exists at $REPO_DIR, skipping clone"
 else
   info "Cloning from the GitHub mirror..."
-  git clone "$GITHUB_REPO" "$REPO_DIR"
+  if ! git clone "$GITHUB_REPO" "$REPO_DIR"; then
+    echo -e "${RED}==>${NC} Clone failed. The mirror is private or unreachable." >&2
+    echo "    Clone it manually, then re-run from inside the repo:" >&2
+    echo "      git clone $GITHUB_REPO $REPO_DIR" >&2
+    exit 1
+  fi
   success "Repo cloned to $REPO_DIR"
 fi
 
