@@ -1,0 +1,84 @@
+# Renovate, as a CronJob rather than a Gitea Action.
+#
+# The act_runner image is bare Alpine with no Node, and Talos has no Docker
+# daemon for container jobs — so Renovate cannot run on the runner. Kubernetes
+# can run its official image directly, which is simpler than making the runner
+# into something it is not.
+#
+# Scope and merge policy live in renovate.json at the repo root.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: renovate-token
+  namespace: kube-system
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: onepassword
+    kind: ClusterSecretStore
+  target:
+    name: renovate-token
+  data:
+    - secretKey: token
+      remoteRef:
+        key: <item-id>/credential # Renovate - talos-home
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: renovate
+  namespace: kube-system
+spec:
+  # Nightly, off-peak. Renovate's own schedule in renovate.json decides whether
+  # it acts; this just decides when it looks.
+  schedule: "17 3 * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: renovate
+              image: renovate/renovate:39.264.0
+              env:
+                - name: RENOVATE_PLATFORM
+                  value: gitea
+                # In-cluster, so this never leaves the node and does not depend
+                # on the tailnet being up.
+                - name: RENOVATE_ENDPOINT
+                  value: http://gitea-http.gitea.svc.cluster.local:3000/api/v1
+                - name: RENOVATE_REPOSITORIES
+                  value: d-goncalves/talos-home
+                - name: RENOVATE_GIT_AUTHOR
+                  value: Renovate <renovate@diogog.com>
+                - name: RENOVATE_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: renovate-token
+                      key: token
+                # Renovate reads the registry over the internet but writes only
+                # to Gitea; nothing here needs cluster credentials.
+                - name: LOG_LEVEL
+                  value: info
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+                limits:
+                  memory: 1536Mi
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]
+          volumes:
+            - name: tmp
+              emptyDir: {}

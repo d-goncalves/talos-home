@@ -6,5 +6,6 @@ resources:
   - nfs-csi/
   - metrics-server/
   - healthcheck/
+  - renovate/
   - coredns/
   - external-secrets/
