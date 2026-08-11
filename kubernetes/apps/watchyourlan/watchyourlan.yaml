@@ -31,7 +31,7 @@ spec:
       hostNetwork: true
       containers:
         - name: watchyourlan
-          image: aceberg/watchyourlan:latest
+          image: aceberg/watchyourlan:2.1.4
           ports:
             - containerPort: 8840
           env:
