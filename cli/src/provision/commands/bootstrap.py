@@ -14,7 +14,7 @@ import time
 import click
 
 from .. import onepassword as op
-from .. import settings, tf
+from .. import settings, substitution, tf
 from ..console import fail, info, rule, success, warn
 from ..shell import require, run, try_run
 
@@ -140,6 +140,15 @@ def bootstrap_secrets() -> None:
             "NAS_DATA_PATH", "NAS data base path", nas.get("data_path")
         ),
     }
+
+    # This dict is the only writer of cluster-vars, and substitution.py lints
+    # the manifests against its key set. Drift between them means either the
+    # lint rejects a variable that does in fact resolve, or it passes one that
+    # takes the whole Kustomization down on the next reconcile.
+    assert set(literals) == substitution.CLUSTER_VARS, (
+        "cluster-vars keys have drifted from substitution.CLUSTER_VARS: "
+        f"{set(literals) ^ substitution.CLUSTER_VARS}"
+    )
 
     _ensure_namespace(FLUX_NAMESPACE)
     _apply_secret(CLUSTER_VARS_SECRET, FLUX_NAMESPACE, literals)

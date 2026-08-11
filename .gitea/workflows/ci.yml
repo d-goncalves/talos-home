@@ -93,3 +93,12 @@ jobs:
             kubectl kustomize "$overlay" >/dev/null
           done
 
+      - name: Flux can substitute every variable
+        run: |
+          # The step above proves nothing about substitution: `kubectl
+          # kustomize` does none, so a manifest that takes the whole apps
+          # Kustomization down still builds clean here. That is exactly how a
+          # green commit broke the cluster during the v2.9 upgrade.
+          cd repo && . .ci/bin/activate
+          python -m provision homelab apps vars
+

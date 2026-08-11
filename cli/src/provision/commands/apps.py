@@ -243,6 +243,29 @@ def apps_check() -> None:
     success("kustomize build succeeds")
 
 
+@apps.command("vars")
+def apps_vars() -> None:
+    """Check every `${VAR}` in the manifests against cluster-vars.
+
+    Fails on a variable Flux would substitute but has no value for, and on one
+    a container expands at runtime that was left unescaped. `kubectl kustomize`
+    does no substitution, so a build passing proves nothing about either.
+    """
+    from .. import substitution
+
+    rule("Substitution audit")
+
+    problems = substitution.unknown_vars(settings.repo_root())
+
+    if problems:
+        for p in problems:
+            click.echo(f"  {click.style('✗', fg='red')} {p}")
+        click.echo()
+        fail(f"{len(problems)} variable(s) Flux cannot substitute")
+
+    success("every ${VAR} is defined in cluster-vars or escaped for the shell")
+
+
 @apps.command("diff")
 def apps_diff() -> None:
     """Show what `sync` would change."""
