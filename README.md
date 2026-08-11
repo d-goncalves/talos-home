@@ -79,7 +79,7 @@ scripts/
 docs/
   rotate.md        # how to rotate every secret, and what needs re-applying
   inventory.md     # what is running, what is pinned, and what still floats
-  todo.md          # what is left, and what is deliberately not being done
+  upgrading.md     # Flux, Talos and Postgres — the things Renovate does not touch
   proxmox.md       # preparing a host: API token, storage, SSH
   draw_arch.py     # generates architecture.png (requires pip install -r docs/requirements.txt)
   architecture.png # rendered diagram
@@ -228,6 +228,18 @@ kubectl get pvc -A -o custom-columns=SC:.spec.storageClassName,NS:.metadata.name
 Verified by destroying the cluster and rebuilding it: apps came back with their
 data attached and nothing needed reconfiguring.
 
+### What a rebuild does not restore
+
+The Gitea PR webhook (repo → Settings → Webhooks) posts to ntfy so a new PR
+reaches your phone. It lives in Gitea's database, not in this repo, so a Gitea
+rebuild loses it — silently, since nothing fails.
+
+Recreate it: POST to `http://ntfy.ntfy/Down` with ntfy basic auth in the
+authorization header, event `pull_request`, and ntfy templating in the query
+string (`tpl=yes`, plus `title`, `message`, `click`, `priority`).
+`ALLOWED_HOST_LIST` in `kubernetes/apps/gitea/values.yaml` is what permits
+Gitea to call an in-cluster address at all.
+
 ### After the NAS restarts
 
 Mounts use `hard`, so I/O blocks rather than erroring while the NAS is away —
@@ -240,3 +252,15 @@ that protects data, but leaves processes kubelet cannot kill.
 Waits for the NAS, proves it is writable, then restarts only NFS-backed pods
 (16 at present, across 9 namespaces). Cleanest of all is to avoid the situation:
 scale those apps down before a planned NAS reboot.
+
+## Deliberately not doing
+
+Recorded so they stop being rediscovered as open questions.
+
+| | why |
+|---|---|
+| Offsite database backups | Accepted risk. Immich, Outline, AdventureLog and Actual Budget exist only on the NAS. |
+| Talos / Kubernetes upgrades via Renovate | A node reboot is not a dependency bump — see [docs/upgrading.md](docs/upgrading.md). |
+| Second node for HA | Waiting on new hardware. One host means every reboot is a full outage. |
+| Immich machine learning | ~2 GB for smart search. Waiting on new hardware. |
+| Pinning the last 7 `:latest` images | Stateless — see [docs/inventory.md](docs/inventory.md). The worst a surprise upgrade does is restart them. |

@@ -15,7 +15,7 @@ not to be kept up to date by hand.
 
 None is tracked by Renovate. Talos and Kubernetes are `talosctl upgrade` /
 `talosctl upgrade-k8s` — a node reboot you choose, not a dependency bump. Flux
-is upgraded as a bundle; see [todo.md](todo.md).
+is upgraded as a bundle; see [upgrading.md](upgrading.md).
 
 ## Helm charts — all pinned
 
