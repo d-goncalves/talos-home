@@ -35,7 +35,12 @@ spec:
                 secretKeyRef:
                   name: adventurelog-secrets
                   key: SECRET_KEY
-            - name: PUBLIC_URL
+            # SITE_URL, not PUBLIC_URL: upstream renamed it, and the old name
+            # is read by nothing. Without it CSRF_TRUSTED_ORIGINS falls back to
+            # http://localhost, so Django rejects every login POST coming from
+            # the real hostname — which surfaces in the UI as "invalid
+            # credentials" and sends you hunting for a password problem.
+            - name: SITE_URL
               value: https://adventurelog.${TAILNET_DOMAIN}
             - name: FRONTEND_URL
               value: https://adventurelog.${TAILNET_DOMAIN}
