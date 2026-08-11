@@ -32,10 +32,16 @@ jobs:
               https://dl.k8s.io/release/v1.36.0/bin/linux/amd64/kubectl
             chmod +x /usr/local/bin/kubectl
           fi
-          python3 --version && kubectl version --client=true 2>/dev/null | head -1
+          # No pipe to head here: kubectl gets SIGPIPE when head closes the
+          # stream and the step dies with exit 141.
+          python3 --version
+          kubectl version --client=true >/dev/null && echo "kubectl ok"
 
       - name: Clone
         run: |
+          # The runner reuses its workdir between jobs, so a leftover repo/
+          # from the previous run makes clone fail outright.
+          rm -rf repo
           git clone --quiet --depth 50 "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" repo
           cd repo && git checkout --quiet "$GITHUB_SHA"
 
