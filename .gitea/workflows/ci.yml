@@ -26,8 +26,8 @@ jobs:
 
       - name: Clone
         run: |
-          git clone --depth 50 "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" repo
-          cd repo && git checkout "$GITHUB_SHA"
+          git clone --quiet --depth 50 "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git" repo
+          cd repo && git checkout --quiet "$GITHUB_SHA"
 
       - name: Lint and tests
         run: |
