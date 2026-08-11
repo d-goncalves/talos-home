@@ -6,4 +6,5 @@ resources:
   - prometheus-community.yaml
   - grafana.yaml
   - csi-driver-nfs.yaml
+  - metrics-server.yaml
   - local-path-provisioner.yaml

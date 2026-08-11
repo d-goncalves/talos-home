@@ -4,5 +4,6 @@ resources:
   - local-path/
   - tailscale-operator/
   - nfs-csi/
+  - metrics-server/
   - coredns/
   - external-secrets/

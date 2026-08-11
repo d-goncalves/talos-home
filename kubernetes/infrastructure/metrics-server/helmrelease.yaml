@@ -1,0 +1,48 @@
+# metrics-server: the thing that makes `kubectl top` work.
+#
+# On a node where memory is the binding constraint, not being able to see which
+# pod is using it is the wrong blind spot to keep — deciding what to disable
+# meant reading per-container stats off Talos directly, which is not a thing
+# you want to be doing during an incident.
+#
+# Deliberately not kube-prometheus-stack, which is disabled in provision.toml
+# for costing ~1 GB. This is ~50 MB and answers the one question that matters
+# here: what is eating the RAM right now.
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: metrics-server
+      version: "3.13.0"
+      sourceRef:
+        kind: HelmRepository
+        name: metrics-server
+        namespace: flux-system
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      retries: 3
+  values:
+    args:
+      # Talos issues the kubelet a self-signed serving certificate and does not
+      # rotate it by default, so metrics-server cannot verify it and every
+      # scrape fails with "x509: cannot validate certificate". The alternative
+      # is enabling rotate-server-certificates in the machine config plus a CSR
+      # approver — more moving parts in the cold-start path than a metrics
+      # endpoint is worth on a single node whose kubelet is only reachable from
+      # inside the cluster.
+      - --kubelet-insecure-tls
+      - --kubelet-preferred-address-types=InternalIP,Hostname,ExternalIP
+    resources:
+      requests:
+        cpu: 20m
+        memory: 48Mi
+      limits:
+        memory: 128Mi
