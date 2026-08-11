@@ -137,9 +137,9 @@ every overlay, and two checks that have each caught a real outage:
   uncommitted file builds locally and breaks the whole Kustomization once Flux
   pulls it
 
-CI runs on the GitHub mirror, which lags behind Gitea, and Flux reconciles from
-Gitea. So install the pre-push hook — it is the only check that runs *before*
-the cluster sees a change:
+CI runs on the Gitea runner (`.gitea/workflows/ci.yml`), against the same
+repository Flux reconciles from. The pre-push hook is still worth installing —
+it is the only check that runs *before* the push:
 
 ```bash
 ln -sf ../../scripts/pre-push .git/hooks/pre-push

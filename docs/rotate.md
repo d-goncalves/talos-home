@@ -126,13 +126,12 @@ automatically. After rotating the token, replace the mirror in
 **Gitea → repo → Settings → Repository → Mirror Settings**, or leave the item
 updated and ask for the mirror to be recreated.
 
-The token needs **both** permissions or the push is rejected:
+The token needs `Contents: Read and write`. A classic token with `repo` works
+too.
 
-- `Contents: Read and write`
-- `Workflows: Read and write` — because the repo contains
-  `.github/workflows/ci.yml`
-
-A classic token with `repo` + `workflow` works too, and is simpler.
+> It previously also needed `Workflows: Read and write`, because the repo
+> carried `.github/workflows/`. That is gone — CI runs on the Gitea runner —
+> so a plain contents-write token is now enough.
 
 ## Checking it worked
 
