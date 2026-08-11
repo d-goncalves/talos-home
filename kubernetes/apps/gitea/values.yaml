@@ -35,6 +35,11 @@ gitea:
       ROOT_URL: https://gitea.${TAILNET_DOMAIN}
     session:
       PROVIDER: memory
+    webhook:
+      # Gitea refuses to call private addresses by default (the default is
+      # 'external'), so a webhook to an in-cluster Service is denied before it
+      # is sent — silently, unless you read the server log. Allow just ntfy.
+      ALLOWED_HOST_LIST: ntfy.ntfy,ntfy.ntfy.svc.cluster.local
     actions:
       # CI runs here rather than on the GitHub mirror, which lags behind Gitea
       # and cannot see the cluster. The runner is act-runner in this namespace.
