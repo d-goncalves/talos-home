@@ -57,6 +57,15 @@ flux install --export > kubernetes/flux/flux-system/gotk-components.yaml
 Commit, push, and let Flux apply it — it self-manages via the `flux-system`
 Kustomization. Currently on v2.8.7.
 
+## Not in git
+
+The Gitea PR webhook (repo → Settings → Webhooks) posts to ntfy so a new PR
+reaches your phone. It lives in Gitea's database, not in this repo, so a Gitea
+rebuild loses it. Recreate: POST to `http://ntfy.ntfy/Down` with ntfy basic
+auth in the authorization header, event `pull_request`, and ntfy templating in
+the query string (`tpl=yes`, plus `title`, `message`, `click`, `priority`).
+`ALLOWED_HOST_LIST` in values.yaml is what permits it.
+
 ## Not doing
 
 Recorded so they stop being rediscovered as open questions.
