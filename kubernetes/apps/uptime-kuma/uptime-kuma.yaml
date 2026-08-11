@@ -41,7 +41,7 @@ spec:
       # chown below is a no-op rather than a privileged write.
       containers:
         - name: uptime-kuma
-          image: louislam/uptime-kuma:latest
+          image: louislam/uptime-kuma:1.23.17
           ports:
             - containerPort: 3001
           env:

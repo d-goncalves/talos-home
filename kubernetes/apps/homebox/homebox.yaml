@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
         - name: homebox
-          image: ghcr.io/sysadminsmedia/homebox:latest
+          image: ghcr.io/sysadminsmedia/homebox:0.26.2
           ports:
             - containerPort: 7745
           env:
