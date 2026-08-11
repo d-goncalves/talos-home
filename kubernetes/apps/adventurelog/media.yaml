@@ -54,8 +54,11 @@ spec:
             limits:
               memory: 64Mi
           readinessProbe:
+            # Probes the image's own index page, not /media/. That is a
+            # directory, and with autoindex off nginx answers 403 — correct
+            # behaviour, but it reads as an unhealthy pod forever.
             httpGet:
-              path: /media/
+              path: /
               port: 8080
             initialDelaySeconds: 3
             periodSeconds: 10
