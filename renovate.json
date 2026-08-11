@@ -1,32 +1,64 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":dependencyDashboard"],
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard"
+  ],
+  "description": "Helm charts and container images only. Terraform providers, the pinned Talos/Kubernetes versions and the Python deps are deliberately left alone: a provider bump can rewrite infrastructure, and a Talos upgrade is a node reboot that no bot should start.",
   "timezone": "Europe/Lisbon",
-  "schedule": ["after 2am and before 6am"],
+  "schedule": [
+    "after 2am and before 6am"
+  ],
   "prConcurrentLimit": 3,
-  "_comment_scope": "Helm charts and container images only. Terraform providers, the pinned Talos/Kubernetes versions and the Python deps are deliberately left alone: a provider bump can rewrite infrastructure, and a Talos upgrade is a node reboot that no bot should start.",
-  "enabledManagers": ["flux", "kubernetes", "helm-values", "helmv3"],
+  "enabledManagers": [
+    "flux",
+    "kubernetes",
+    "helm-values",
+    "helmv3"
+  ],
   "packageRules": [
     {
       "description": "Patch and minor bumps merge themselves once CI is green. The checks that gate this are the same ones a human would look at, and leaving them queued for review is how a homelab ends up a year behind.",
-      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest"
+      ],
       "automerge": true,
       "automergeType": "branch",
       "ignoreTests": false
     },
     {
-      "description": "Majors always get a PR. They carry migrations, renamed values and removed APIs — the cases where reading the changelog is the whole job.",
-      "matchUpdateTypes": ["major"],
+      "description": "Majors always get a PR. They carry migrations, renamed values and removed APIs \u2014 the cases where reading the changelog is the whole job.",
+      "matchUpdateTypes": [
+        "major"
+      ],
       "automerge": false,
-      "addLabels": ["major"]
+      "addLabels": [
+        "major"
+      ]
     },
     {
       "description": "Gitea holds the repo Flux reconciles from and Renovate's own runtime. An unattended bump to either can lock you out of your own GitOps loop, so both are review-only whatever the semver says.",
-      "matchPackageNames": ["/gitea/", "/act_runner/", "/renovate/"],
+      "matchPackageNames": [
+        "/gitea/",
+        "/act_runner/",
+        "/renovate/"
+      ],
       "automerge": false,
-      "addLabels": ["needs-care"]
+      "addLabels": [
+        "needs-care"
+      ]
     }
   ],
-  "flux": { "fileMatch": ["kubernetes/.+\\.ya?ml$"] },
-  "kubernetes": { "fileMatch": ["kubernetes/.+\\.ya?ml$"] }
+  "flux": {
+    "fileMatch": [
+      "kubernetes/.+\\.ya?ml$"
+    ]
+  },
+  "kubernetes": {
+    "fileMatch": [
+      "kubernetes/.+\\.ya?ml$"
+    ]
+  }
 }
