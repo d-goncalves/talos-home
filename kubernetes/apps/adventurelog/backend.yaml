@@ -35,12 +35,18 @@ spec:
                 secretKeyRef:
                   name: adventurelog-secrets
                   key: SECRET_KEY
-            # SITE_URL, not PUBLIC_URL: upstream renamed it, and the old name
-            # is read by nothing. Without it CSRF_TRUSTED_ORIGINS falls back to
-            # http://localhost, so Django rejects every login POST coming from
-            # the real hostname — which surfaces in the UI as "invalid
-            # credentials" and sends you hunting for a password problem.
+            # SITE_URL is what settings.py reads: without it
+            # CSRF_TRUSTED_ORIGINS falls back to http://localhost, so Django
+            # rejects every login POST from the real hostname — which the UI
+            # reports as "invalid credentials".
             - name: SITE_URL
+              value: https://adventurelog.${TAILNET_DOMAIN}
+            # PUBLIC_URL is NOT dead despite the rename. The Immich integration
+            # still reads it straight from os.environ to build the image URLs it
+            # hands the browser, and falls back to http://127.0.0.1:8000 —
+            # which resolves to the visitor's own machine, not the server. Both
+            # names are needed; they are read by different code.
+            - name: PUBLIC_URL
               value: https://adventurelog.${TAILNET_DOMAIN}
             - name: FRONTEND_URL
               value: https://adventurelog.${TAILNET_DOMAIN}
