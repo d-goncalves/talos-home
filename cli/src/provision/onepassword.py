@@ -28,6 +28,7 @@ ITEM_PROXMOX = "Proxmox API - talos-home"
 # tskey-client-… secret, which is exactly what the provider wants.
 ITEM_TAILSCALE_OAUTH = "Tailscale Talos"
 ITEM_UNIFI = "UniFi Local Admin - talos-home"
+ITEM_HEALTHCHECKS = "Healthchecks.io - talos-home"
 
 
 @dataclass(frozen=True)
@@ -56,6 +57,11 @@ TF_SECRETS: tuple[TfSecret, ...] = (
         ITEM_TAILSCALE_OAUTH,
         ("username", "password"),
         hint="OAuth client with the auth_keys scope; username = client ID, password = client secret",
+    ),
+    TfSecret(
+        ITEM_HEALTHCHECKS,
+        ("credential",),
+        hint="Read-write API key. Also holds ping_url, which the heartbeat CronJob reads via ESO.",
     ),
     TfSecret(
         ITEM_UNIFI,

@@ -193,6 +193,7 @@ scripts/
   recover.sh       # bare-machine bootstrap: install tools, clone repo, hand off
   deploy-gitea.sh  # Gitea helm deploy (not a Flux HelmRelease — see the script)
 docs/
+  rotate.md        # how to rotate every secret, and what needs re-applying
   draw_arch.py     # generates architecture.png (requires pip install -r docs/requirements.txt)
   architecture.png # rendered diagram
 ```
@@ -318,6 +319,12 @@ key-only access with no console login.
 a full re-clone, and it discards anything the guest wrote. It needs
 `VM.Snapshot` and `VM.Snapshot.Rollback` on the API token's role; without them
 everything else still works and `new` warns once.
+
+## Rotating secrets
+
+Every secret lives in 1Password. Most rotations need no action at all — see
+[docs/rotate.md](docs/rotate.md) for the per-secret table, including the one
+trap: app admin passwords are only read when the account is first created.
 
 ## Recovery
 
