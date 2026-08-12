@@ -29,7 +29,7 @@
       "ignoreTests": false
     },
     {
-      "description": "Majors always get a PR. They carry migrations, renamed values and removed APIs \u2014 the cases where reading the changelog is the whole job.",
+      "description": "Majors always get a PR. They carry migrations, renamed values and removed APIs — the cases where reading the changelog is the whole job.",
       "matchUpdateTypes": [
         "major"
       ],
@@ -52,17 +52,7 @@
       ]
     },
     {
-      "description": "AdventureLog publishes no tag for what it runs: :latest is built from main, ahead of the newest release, so it is pinned by digest instead. A digest bump there is not a patch — it is however far main has moved, including migrations — so it opens a PR rather than merging itself.",
-      "matchPackageNames": [
-        "/adventurelog/"
-      ],
-      "automerge": false,
-      "addLabels": [
-        "needs-care"
-      ]
-    },
-    {
-      "description": "Never propose a major bump for a stateful datastore. Postgres refuses to start on a data directory written by an older major, so this is a pg_upgrade or dump-restore migration, not a tag change \u2014 and a PR that reads as routine is one click from taking Immich, Outline and AdventureLog down. Minor and patch still flow.",
+      "description": "Never propose a major bump for a stateful datastore. Postgres refuses to start on a data directory written by an older major, so this is a pg_upgrade or dump-restore migration, not a tag change — and a PR that reads as routine is one click from taking Immich, Outline and AdventureLog down. Minor and patch still flow.",
       "matchDatasources": [
         "docker"
       ],

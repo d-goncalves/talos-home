@@ -17,12 +17,13 @@ spec:
     spec:
       containers:
         - name: backend
-          # Pinned by digest: :latest is built from main and is ahead of the
-          # newest release, v0.12.1 — the frontend reports itself as 0.13.0.
-          # Pinning back to v0.12.1 would downgrade a Django app whose database
-          # already carries newer migrations, the one direction that does not
-          # go back cleanly. Swap for a tag once 0.13.0 ships.
-          image: ghcr.io/seanmorley15/adventurelog-backend:latest@sha256:bb78dd795a0c803253b4aefa097e1269a2a6b8c008dd3690dce05e1039819b0a
+          # Backend and frontend are released together and must move together:
+          # both v0.13.0 images are built from the same commit, 5673ef5bb5aa.
+          #
+          # Note this is not the same image as :latest was — the two were built
+          # 19 seconds apart from that commit and have different digests. The
+          # tag is the released artifact; :latest is whichever build ran last.
+          image: ghcr.io/seanmorley15/adventurelog-backend:v0.13.0
           env:
             - name: PGHOST
               value: adventurelog-postgres
