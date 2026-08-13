@@ -41,7 +41,13 @@ spec:
       # chown below is a no-op rather than a privileged write.
       containers:
         - name: uptime-kuma
-          image: louislam/uptime-kuma:1.23.17
+          # v2 aggregates the heartbeat table into a new format on first
+          # start. That migration must not be interrupted — an interrupted run
+          # means restoring from backup and retrying — so there are deliberately
+          # no liveness or readiness probes on this Deployment to kill it
+          # mid-flight, and the memory limit below is sized for the migration
+          # rather than for steady state.
+          image: louislam/uptime-kuma:2.5.0
           ports:
             - containerPort: 3001
           env:
@@ -61,8 +67,12 @@ spec:
           resources:
             requests:
               memory: 128Mi
+            # Raised from 256Mi for the v1 to v2 migration: 1.4M heartbeats
+            # were aggregated in one pass and the old limit left only ~117Mi
+            # of headroom, which an OOM kill would have turned into a restore.
+            # Safe to lower again once v2 has settled.
             limits:
-              memory: 256Mi
+              memory: 1Gi
       volumes:
         - name: data
           persistentVolumeClaim:
