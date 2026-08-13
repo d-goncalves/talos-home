@@ -1,6 +1,6 @@
 # What is running
 
-Snapshot taken 2026-08-11. The living version of this is
+Snapshot taken 2026-08-13. The living version of this is
 Renovate's **Dependency Dashboard** issue in Gitea — it recomputes nightly and
 lists what is available. This file exists to record the shape of the problem,
 not to be kept up to date by hand.
@@ -54,11 +54,11 @@ Renovate can see these, so they stay current on their own.
 | `ghcr.io/fluxcd/source-controller:v1.9.4` | flux-system |
 | `ghcr.io/immich-app/immich-server:v2.6.3` | immich |
 | `ghcr.io/immich-app/postgres:14-vectorchord0.3.0-pgvectors0.2.0` | immich |
-| `ghcr.io/seanmorley15/adventurelog-backend:latest` (digest-pinned) | adventurelog |
-| `ghcr.io/seanmorley15/adventurelog-frontend:latest` (digest-pinned) | adventurelog |
+| `ghcr.io/seanmorley15/adventurelog-backend:v0.13.0` | adventurelog |
+| `ghcr.io/seanmorley15/adventurelog-frontend:v0.13.0` | adventurelog |
 | `ghcr.io/sysadminsmedia/homebox:0.26.2` | homebox |
 | `gitea/act_runner:0.2.13` | gitea |
-| `louislam/uptime-kuma:1.23.17` | uptime-kuma |
+| `louislam/uptime-kuma:2.5.0` | uptime-kuma |
 | `lscr.io/linuxserver/bazarr:v1.6.0-ls357` | servarr |
 | `lscr.io/linuxserver/jellyfin:10.11.11ubu2604-ls43` | servarr |
 | `lscr.io/linuxserver/prowlarr:2.5.2.5491-ls156` | servarr |
@@ -115,5 +115,8 @@ Should another one need pinning, in order of reliability:
 
 Two traps. LinuxServer images tag as `<upstream>-ls<build>` and are served from
 `lscr.io`, which proxies `ghcr.io/linuxserver/*` — the registry API works
-against ghcr, not lscr. And a `:latest` that is built from `main` may have no
-release tag equal to it, which is why AdventureLog is pinned by digest.
+against ghcr, not lscr. And a `:latest` built from `main` may have no release
+tag equal to it: AdventureLog was digest-pinned for exactly that reason until
+v0.13.0 shipped. Note also that an image's `:latest` and its release tag can be
+*different builds* of the same commit — they were 19 seconds apart for the
+AdventureLog backend — so pin the tag, not whichever build ran last.
