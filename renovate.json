@@ -52,6 +52,13 @@
       ]
     },
     {
+      "description": "The qbittorrent repo carries a stray 20.04.1 tag — an Ubuntu version, not a qBittorrent one — which Renovate reads as a major bump to v20 and parks on the dashboard forever. Real tags are <ver>_v<libtorrent>-ls<build>, currently 5.x. Excluding the Ubuntu-shaped tag leaves genuine updates flowing; redefining the versioning scheme instead would have filtered out libtorrent bumps, which are wanted.",
+      "matchPackageNames": [
+        "/linuxserver/qbittorrent/"
+      ],
+      "allowedVersions": "!/^20\\.04/"
+    },
+    {
       "description": "Never propose a major bump for a stateful datastore. Postgres refuses to start on a data directory written by an older major, so this is a pg_upgrade or dump-restore migration, not a tag change — and a PR that reads as routine is one click from taking Immich, Outline and AdventureLog down. Minor and patch still flow.",
       "matchDatasources": [
         "docker"
