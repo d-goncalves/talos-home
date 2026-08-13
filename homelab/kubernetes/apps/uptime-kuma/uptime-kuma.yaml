@@ -66,13 +66,13 @@ spec:
               mountPath: /app/data
           resources:
             requests:
-              memory: 128Mi
-            # Raised from 256Mi for the v1 to v2 migration: 1.4M heartbeats
-            # were aggregated in one pass and the old limit left only ~117Mi
-            # of headroom, which an OOM kill would have turned into a restore.
-            # Safe to lower again once v2 has settled.
+              # v2 settles at ~181Mi, up from ~139Mi on v1.
+              memory: 192Mi
+            # Not back to the old 256Mi: v2 idles at ~181Mi, so that would
+            # leave 75Mi of headroom on an app that periodically re-aggregates.
+            # 1Gi was for the one-off migration; 512Mi is the steady state.
             limits:
-              memory: 1Gi
+              memory: 512Mi
       volumes:
         - name: data
           persistentVolumeClaim:
