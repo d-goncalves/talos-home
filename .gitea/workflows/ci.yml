@@ -97,6 +97,25 @@ jobs:
             exit 1
           fi
 
+      - name: Disabled apps still build
+        run: |
+          # An app switched off in provision.toml is left out of the generated
+          # kustomization, so the build above never touches it — but Renovate
+          # still proposes updates to its manifests, and those would merge with
+          # nothing having parsed them.
+          #
+          # Building each disabled app on its own keeps that honest, and keeps
+          # its charts current enough that re-enabling stays a toggle rather
+          # than a migration project.
+          cd repo && . .ci/bin/activate
+          for app in $(python -m provision homelab apps list 2>/dev/null \
+                       | awk '/off/ {print $2}'); do
+            dir="homelab/kubernetes/apps/$app"
+            [ -f "$dir/kustomization.yaml" ] || continue
+            echo "building disabled app: $app"
+            kubectl kustomize "$dir" >/dev/null
+          done
+
       - name: Kustomize builds
         run: |
           cd repo
