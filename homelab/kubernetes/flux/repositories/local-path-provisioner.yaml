@@ -12,7 +12,7 @@ spec:
   interval: 24h
   url: https://github.com/rancher/local-path-provisioner
   ref:
-    tag: v0.0.31
+    tag: v0.0.37
   # Fetch only the chart directory; the rest of the repo is source we never use.
   ignore: |
     /*
