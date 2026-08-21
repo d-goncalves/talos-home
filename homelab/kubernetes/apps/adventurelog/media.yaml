@@ -28,7 +28,7 @@ spec:
       containers:
         - name: nginx
           # Unprivileged image: listens on 8080, temp paths under /tmp.
-          image: nginxinc/nginx-unprivileged:1.27-alpine
+          image: nginxinc/nginx-unprivileged:1.31-alpine
           ports:
             - containerPort: 8080
               name: http
