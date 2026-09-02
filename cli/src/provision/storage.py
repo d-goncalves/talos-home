@@ -10,6 +10,14 @@ Two invariants, both learned the hard way:
 2. Every Deployment holding an NFS volume uses `Recreate`. Mounts are `nolock`,
    so locking is local-only and two pods writing the same SQLite file will
    corrupt it. RollingUpdate guarantees an overlap.
+
+Neither invariant is checked here, but a third thing this module cannot catch
+is worth knowing before you add a new StorageClass: the CSI driver only
+creates `subDir` — the per-PVC leaf — inside an *already-existing* share. The
+`share` path itself (`${NAS_DATA_PATH}/<app>-<component>`) has to exist on the
+NAS first, or the initial mount fails with "No such file or directory" and the
+PVC sits Pending forever. Every existing share was created by hand once; see
+the README section on adding a new stateful app for how.
 """
 
 from __future__ import annotations

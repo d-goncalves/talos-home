@@ -124,6 +124,8 @@ everything non-secret; `terraform.tfvars.json` and
 
 NAS exports are not managed here — no UniFi API exposes UNAS shares, so those
 stay a one-time manual step and are consumed by the `nfs-csi` StorageClasses.
+Adding an app with its own database is a *second*, recurring manual step —
+see [Adding a stateful app](#adding-a-stateful-app).
 
 > Terraform state holds the cluster CA key, bootstrap tokens and the secretbox
 > key: `talos_machine_secrets` generates them, so they cannot come from
@@ -146,6 +148,39 @@ Namespaces, PVCs and PVs are annotated prune-exempt, so data survives and
 enabling reattaches the same volumes. Flux reads that annotation from the
 cluster, not from git, so `apps protect` has to run before an app leaves the
 source — `apps disable` refuses until it can verify this.
+
+## Adding a stateful app
+
+Copy an existing app with the same shape — Outline (Postgres + Redis) is the
+usual template — and add a `StorageClass` for each new PVC under
+[homelab/kubernetes/infrastructure/nfs-csi/](homelab/kubernetes/infrastructure/nfs-csi/).
+
+That StorageClass's `share` path will not exist on the NAS yet, and the CSI
+driver only creates the `subDir` *inside* an existing share — never the share
+itself. Skip this and the PVC sits `Pending` forever with `mount.nfs: ...
+No such file or directory` in its events. Create the directory once, from
+inside the cluster (the node's IP is what the NAS export allow-lists, not
+this machine's):
+
+```bash
+kubectl run nas-mkdir --restart=Never -n kube-system --image=alpine:3.20 --overrides='{
+  "spec": {"containers": [{
+    "name": "mkdir", "image": "alpine:3.20",
+    "securityContext": {"privileged": true, "capabilities": {"add": ["SYS_ADMIN"]}},
+    "command": ["/bin/sh", "-c"],
+    "args": ["apk add --no-cache nfs-utils >/dev/null && mount -t nfs -o nfsvers=3,nolock <NAS_IP>:<NAS_DATA_PATH> /mnt && mkdir -p /mnt/<app>-<component> && umount /mnt"]
+  }]}
+}'
+kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/nas-mkdir -n kube-system --timeout=60s
+kubectl delete pod nas-mkdir -n kube-system
+```
+
+`--image` has to be passed twice — once as its own flag (`kubectl run` requires
+it even when `--overrides` also sets it) and once inside the override.
+
+`kube-system` is the only namespace exempt from this cluster's PodSecurity
+baseline, which is also why the NFS CSI driver's own pods live there — a
+`privileged` pod anywhere else is refused before it starts.
 
 ## The sandbox
 
