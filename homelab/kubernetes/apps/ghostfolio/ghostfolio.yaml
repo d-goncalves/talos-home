@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghostfolio
+  namespace: ghostfolio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghostfolio
+  template:
+    metadata:
+      labels:
+        app: ghostfolio
+    spec:
+      containers:
+        - name: ghostfolio
+          image: ghostfolio/ghostfolio:3.65.0
+          ports:
+            - containerPort: 3333
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: ghostfolio-secrets
+                  key: DATABASE_URL
+            - name: ACCESS_TOKEN_SALT
+              valueFrom:
+                secretKeyRef:
+                  name: ghostfolio-secrets
+                  key: ACCESS_TOKEN_SALT
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ghostfolio-secrets
+                  key: JWT_SECRET_KEY
+            - name: REDIS_HOST
+              value: ghostfolio-redis
+            - name: REDIS_PORT
+              value: "6379"
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ghostfolio-secrets
+                  key: REDIS_PASSWORD
+          resources:
+            requests:
+              memory: 256Mi
+            limits:
+              memory: 768Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghostfolio
+  namespace: ghostfolio
+spec:
+  selector:
+    app: ghostfolio
+  ports:
+    - port: 3333

@@ -33,7 +33,7 @@ green. Majors open a PR. Gitea, Flux, the runner and Renovate itself are
 review-only whatever the semver says — an unattended bump to any of them can
 break the loop you would use to roll it back.
 
-## Container images — 43 pinned
+## Container images — 45 pinned
 
 Renovate can see these, so they stay current on their own.
 
@@ -48,6 +48,7 @@ Renovate can see these, so they stay current on their own.
 | `docker.io/valkey/valkey:9.1-alpine` | immich |
 | `ghcr.io/advplyr/audiobookshelf:2.36.0` | audiobookshelf |
 | `ghcr.io/external-secrets/external-secrets:v2.5.0` | external-secrets |
+| `ghostfolio/ghostfolio:3.65.0` | ghostfolio |
 | `ghcr.io/fluxcd/helm-controller:v1.6.3` | flux-system |
 | `ghcr.io/fluxcd/kustomize-controller:v1.9.4` | flux-system |
 | `ghcr.io/fluxcd/notification-controller:v1.9.3` | flux-system |
@@ -68,9 +69,10 @@ Renovate can see these, so they stay current on their own.
 | `nginxinc/nginx-unprivileged:1.27-alpine` | adventurelog |
 | `outlinewiki/outline:1.9.2` | outline |
 | `postgis/postgis:16-3.4` | adventurelog |
+| `postgres:15-alpine` | ghostfolio |
 | `postgres:16` | outline |
 | `rancher/local-path-provisioner:v0.0.31` | local-path-storage |
-| `redis:7-alpine` | outline |
+| `redis:7-alpine` | outline, ghostfolio |
 | `registry.k8s.io/coredns/coredns:v1.14.2` | kube-system |
 | `renovate/renovate:39.264.0` | kube-system |
 | `registry.k8s.io/metrics-server/metrics-server:v0.8.1` | kube-system |

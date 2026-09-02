@@ -29,6 +29,7 @@ resources:
   - actualbudget/
   - wallos/
   - homebox/
+  - ghostfolio/
   - homepage/
   - ntfy/
   - uptime-kuma/

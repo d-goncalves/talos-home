@@ -113,6 +113,7 @@ audiobookshelf = true
 actualbudget   = true
 wallos         = true
 homebox        = true
+ghostfolio     = true
 homepage       = true
 ntfy           = true
 uptime-kuma    = true

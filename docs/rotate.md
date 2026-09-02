@@ -47,6 +47,7 @@ kubectl annotate externalsecret -n <namespace> <name> force-sync=$(date +%s) --o
 | App | 1Password item |
 |---|---|
 | adventurelog | `AdventureLog - talos-home` |
+| ghostfolio | `Ghostfolio - talos-home` |
 | gitea | `Gitea` |
 | homebox | `Homebox - talos-home` |
 | immich | `Immich - talos-home` |

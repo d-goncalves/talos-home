@@ -18,3 +18,4 @@ resources:
   - storageclass-servarr-config.yaml
   - storageclass-uptime-kuma.yaml
   - storageclass-ntfy.yaml
+  - storageclass-ghostfolio.yaml

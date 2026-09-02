@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ghostfolio-redis
+  namespace: ghostfolio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghostfolio-redis
+  template:
+    metadata:
+      labels:
+        app: ghostfolio-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          # Unlike outline-redis, Ghostfolio requires auth — it refuses to
+          # start without REDIS_PASSWORD set on both sides.
+          command: ["/bin/sh", "-c"]
+          args:
+            - redis-server --requirepass "$REDIS_PASSWORD"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ghostfolio-secrets
+                  key: REDIS_PASSWORD
+          resources:
+            requests:
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghostfolio-redis
+  namespace: ghostfolio
+spec:
+  selector:
+    app: ghostfolio-redis
+  ports:
+    - port: 6379

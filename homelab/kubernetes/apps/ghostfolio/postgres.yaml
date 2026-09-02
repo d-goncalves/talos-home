@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ghostfolio-postgres-data
+  namespace: ghostfolio
+spec:
+  storageClassName: nfs-ghostfolio-postgres
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ghostfolio-postgres
+  namespace: ghostfolio
+spec:
+  serviceName: ghostfolio-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ghostfolio-postgres
+  template:
+    metadata:
+      labels:
+        app: ghostfolio-postgres
+    spec:
+      securityContext:
+        runAsUser: 977
+        runAsGroup: 988
+        fsGroup: 988
+      containers:
+        - name: postgres
+          # 15-alpine matches upstream's own docker-compose.yml — Ghostfolio's
+          # Prisma migrations are tested against that version, not 16.
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_DB
+              value: ghostfolio-db
+            - name: POSTGRES_USER
+              value: ghostfolio
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ghostfolio-secrets
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ghostfolio-postgres-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghostfolio-postgres
+  namespace: ghostfolio
+spec:
+  selector:
+    app: ghostfolio-postgres
+  ports:
+    - port: 5432

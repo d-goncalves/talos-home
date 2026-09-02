@@ -26,6 +26,7 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 | [Immich](https://immich.app) | Photo library |
 | [Audiobookshelf](https://audiobookshelf.org) | Audiobooks & podcasts |
 | [Actual Budget](https://actualbudget.org) | Personal finance |
+| [Ghostfolio](https://ghostfol.io) | Wealth & portfolio tracker |
 | [Wallos](https://wallosapp.com) | Subscription tracker |
 | [AdventureLog](https://adventurelog.app) | Travel tracker |
 | [Homebox](https://homebox.software) | Home inventory |
