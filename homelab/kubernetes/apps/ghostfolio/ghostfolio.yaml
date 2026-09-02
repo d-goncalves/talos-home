@@ -45,7 +45,10 @@ spec:
                   key: REDIS_PASSWORD
           resources:
             requests:
-              memory: 256Mi
+              # Settled from measured usage: NestJS + Angular SSR peaks at
+              # ~413Mi on cold start, then GCs down to ~365-370Mi steady
+              # state. 256Mi was a guess before deploying; this is not.
+              memory: 384Mi
             limits:
               memory: 768Mi
 ---
