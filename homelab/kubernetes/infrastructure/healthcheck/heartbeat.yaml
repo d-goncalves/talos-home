@@ -48,7 +48,7 @@ spec:
             runAsUser: 65534
           containers:
             - name: ping
-              image: curlimages/curl:8.21.0
+              image: curlimages/curl:8.22.0
               args:
                 - --fail
                 - --silent
