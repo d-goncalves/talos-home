@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: ghostfolio
-          image: ghostfolio/ghostfolio:3.65.0
+          image: ghostfolio/ghostfolio:3.69.0
           ports:
             - containerPort: 3333
           env:
