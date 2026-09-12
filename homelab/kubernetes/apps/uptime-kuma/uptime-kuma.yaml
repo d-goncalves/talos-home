@@ -47,7 +47,7 @@ spec:
           # no liveness or readiness probes on this Deployment to kill it
           # mid-flight, and the memory limit below is sized for the migration
           # rather than for steady state.
-          image: louislam/uptime-kuma:2.5.3
+          image: louislam/uptime-kuma:2.5.4
           ports:
             - containerPort: 3001
           env:
