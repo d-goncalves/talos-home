@@ -1,6 +1,16 @@
 # talos-home
 
-GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running on Proxmox. Managed with [FluxCD](https://fluxcd.io).
+GitOps repo and provisioning CLI for a single-node Kubernetes cluster on Proxmox. Terraform builds a [Talos Linux](https://talos.dev) VM, [Flux](https://fluxcd.io) deploys everything else from git, and a Python CLI, `./provision`, sequences the two.
+
+## What it does
+
+- **Provisions the node.** Terraform builds the Proxmox VM, installs Talos, joins the node to the tailnet, pins its address and bootstraps Kubernetes. It stops at a healthy, empty cluster.
+- **Deploys with Flux.** Flux syncs `homelab/kubernetes/` from Gitea and reconciles in order: `infrastructure`, then `external-secrets-store`, then `apps`, each waiting on the last through `dependsOn`.
+- **Keeps secrets out of git.** They live in 1Password. Terraform reads them at plan time and the cluster syncs them every hour.
+- **Serves apps on the tailnet.**
+- **Keeps data on NFS.** Everything durable is on NFS and only disposable caches use local-path, so a rebuilt node reattaches its data.
+- **Updates and checks itself.** Renovate opens PRs for charts and images, and patch and minor bumps merge once CI is green. A CronJob pings healthchecks.io every 5 minutes as a dead-man's switch.
+- **Rebuilds from scratch** with one idempotent command.
 
 ## Stack
 
@@ -8,11 +18,79 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 |---|---|
 | OS | Talos Linux |
 | Hypervisor | Proxmox |
-| GitOps | FluxCD + Gitea |
+| Provisioning | Terraform (Proxmox, Talos, Tailscale, UniFi, 1Password and healthchecks.io providers) |
+| GitOps | FluxCD, with Gitea as the source |
+| Secrets | 1Password and External Secrets |
 | Ingress | Tailscale Operator |
-| Storage | NFS (Unifi NAS) — everything durable · local-path only for disposable caches |
+| Storage | NFS CSI on a UniFi NAS; local-path for disposable caches |
+| CI | Gitea Actions runner |
+| Updates | Renovate |
+| CLI | Python and Click, a thin dispatcher over `terraform`, `talosctl`, `kubectl`, `flux` and `op` |
 
-## Apps
+## Running it
+
+Requirements:
+
+- A Proxmox host prepared as in [docs/proxmox.md](docs/proxmox.md): API token, storage content types and host SSH.
+- A 1Password vault holding the secrets. `./provision homelab secrets list` shows what is expected.
+- An NFS server. The exports are created once by hand; see [operations](docs/operations.md#adding-a-stateful-app).
+- A Tailscale tailnet and a UniFi controller.
+- `terraform`, `talosctl`, `kubectl`, `flux`, `op` and Python 3. `./provision` creates its own `.venv` on first run, so nothing installs globally.
+
+```bash
+# Configure
+$EDITOR provision.toml                      # fill in the <placeholder> values
+export OP_ACCOUNT=my.1password.com          # or OP_SERVICE_ACCOUNT_TOKEN
+
+# Build the cluster
+./provision homelab preflight               # tooling, 1Password sign-in, config completeness
+./provision homelab up                      # preflight, secrets check, config sync, terraform apply,
+                                            # kubeconfig and talosconfig, cluster secrets, Flux handoff,
+                                            # state backup. Idempotent, so it also resumes after a failure
+./provision homelab bootstrap gitea         # optional: Flux reads from Gitea, which runs on this cluster, so a
+                                            # cold cluster syncs only once Gitea is up. This speeds it along
+
+# Day to day
+./provision homelab check                   # exit 0 = in sync, 2 = changes pending
+./provision homelab status                  # cluster state; --deep also runs talosctl health
+./provision homelab apps protect            # once, before the first disable
+./provision homelab apps disable <app>      # data survives; enabling reattaches the volumes
+./provision sandbox new                     # a throwaway Ubuntu VM, ~40s
+```
+
+[`provision.toml`](provision.toml) is the single source of truth for non-secret configuration; `terraform.tfvars.json` and `homelab/kubernetes/apps/kustomization.yaml` are generated from it. This public copy has values that identify my network replaced with placeholders such as `<tailnet>` and `<node-ip>`.
+
+## Three stacks
+
+`./provision` manages three things that share a Proxmox host and nothing else:
+
+| | `homelab` | `sandbox` | `pihole` |
+|---|---|---|---|
+| what | the Talos cluster and its apps | a throwaway Ubuntu VM | DNS for the tailnet |
+| driven by | Terraform + Flux | the Proxmox API, directly | Ansible |
+| state | Terraform state, backed up to 1Password | none | its own, disposable |
+| lifetime | months | minutes | years |
+
+Each has its own state, so a plan aimed at one cannot touch another.
+
+## Repo layout
+
+```
+provision          # CLI entrypoint
+provision.toml     # all non-secret configuration
+homelab/           # the cluster
+  terraform/       # Proxmox VM, Talos, Tailscale, UniFi reservation, healthchecks
+  kubernetes/      # Flux: apps/, infrastructure/, flux/
+  scripts/         # recover.sh (bare-machine bootstrap), deploy-gitea.sh
+  docs/            # inventory, upgrade procedures
+sandbox/           # a throwaway Ubuntu VM, no state
+pihole/            # DNS for the tailnet (Terraform + Ansible)
+cli/               # the ./provision implementation (Python + Click, with tests)
+docs/              # operations, secret rotation, Proxmox preparation, the diagram
+```
+
+<details>
+<summary>Apps running on it</summary>
 
 | App | Purpose |
 |---|---|
@@ -41,275 +119,17 @@ GitOps config for a single-node [Talos Linux](https://talos.dev) cluster running
 | [Ntfy](https://ntfy.sh) | Push notifications |
 | Grafana + Loki + Prometheus | Metrics & logs — **disabled**, see `[apps]` in provision.toml |
 
-## Architecture
+</details>
 
-### Cluster overview
+## Architecture
 
 ![Architecture diagram](docs/architecture.png)
 
-> **Edge colours:** 🔵 blue = GitOps / networking · 🟢 green = Flux reconcile · 🟣 purple = secrets · 🟡 yellow = NFS storage · 🔴 red = local-path storage
+> Edge colours: blue = GitOps / networking · green = Flux reconcile · purple = secrets · yellow = NFS storage · red = local-path storage
 
+## Docs
 
-### Flux reconciliation order
-
-`flux-system` → `infrastructure` → `external-secrets-store` → `apps`, each
-waiting on the last via `dependsOn`.
-
-### Secrets
-
-Nothing secret is committed. Terraform reads 1Password directly at plan time;
-in-cluster, External Secrets syncs the same vault into Kubernetes Secrets every
-hour. See [docs/rotate.md](docs/rotate.md).
-
-## Repo structure
-
-```
-provision          # the CLI entrypoint — ./provision --help
-provision.toml     # ALL configuration — cluster, network, nodes, apps, sandbox
-homelab/           # the Kubernetes cluster
-  terraform/       # Proxmox VM, Talos, Tailscale, UniFi reservation, healthchecks
-  kubernetes/      # Flux: apps/, infrastructure/, flux/
-  machine-config/  # generated Talos configs (gitignored)
-  patches/         # machine config patches
-  scripts/         # recover.sh (bare-machine bootstrap), deploy-gitea.sh
-  docs/            # inventory, upgrade procedures
-sandbox/           # a throwaway Ubuntu VM — no state, driven by the Proxmox API
-pihole/            # DNS for the tailnet
-  terraform/       # the tailnet nameserver list — its own state
-  ansible/         # unbound, upstreams, local DNS, blocklists, admin password
-cli/               # implementation of ./provision (Python + click)
-docs/              # what spans all three
-  rotate.md        # how to rotate every secret, and what needs re-applying
-  proxmox.md       # preparing a host: API token, storage, SSH
-  draw_arch.py     # generates architecture.png (pip install -r docs/requirements.txt)
-  architecture.png # rendered diagram
-```
-
-## Three stacks
-
-`./provision` manages three things that share a Proxmox host and nothing else.
-One command group each, named after the directory that holds it:
-
-| | `provision homelab` | `provision sandbox` | `provision pihole` |
-|---|---|---|---|
-| directory | `homelab/` | `sandbox/` | `pihole/` |
-| what | the Talos cluster and its apps | a throwaway Ubuntu VM | DNS for the tailnet |
-| driven by | Terraform + Flux | the Proxmox API, directly | Ansible |
-| state | `terraform.tfstate`, backed up to 1Password | none | its own `terraform.tfstate`, disposable |
-| lifetime | months | minutes | years |
-
-The sandbox holds no Terraform state, so a mistake there cannot plan a change
-against the cluster. Pi-hole's container is deliberately not Terraform-managed
-either — see [pihole/README.md](pihole/README.md) — so `provision pihole`
-reports drift rather than correcting it.
-
-Each stack that needs Terraform has its own root and its own state, so a plan
-aimed at one cannot touch the other. Only the cluster's state is irreplaceable —
-it holds the cluster PKI, and `provision homelab state backup` puts it in
-1Password. Pi-hole's holds a nameserver list and can be rebuilt by re-applying.
-
-## Provisioning
-
-Terraform builds the node; Flux fills it.
-
-```bash
-./provision homelab up      # a machine from scratch, end to end
-./provision homelab check   # is anything pending?
-```
-
-`./provision` creates its own `.venv` on first run, so nothing installs
-globally. [provision.toml](provision.toml) is the single source of truth for
-everything non-secret; `terraform.tfvars.json` and
-`homelab/kubernetes/apps/kustomization.yaml` are generated from it.
-
-NAS exports are not managed here — no UniFi API exposes UNAS shares, so those
-stay a one-time manual step and are consumed by the `nfs-csi` StorageClasses.
-Adding an app with its own database is a *second*, recurring manual step —
-see [Adding a stateful app](#adding-a-stateful-app).
-
-> Terraform state holds the cluster CA key, bootstrap tokens and the secretbox
-> key: `talos_machine_secrets` generates them, so they cannot come from
-> 1Password. State is gitignored — back it up with
-> `./provision homelab state backup` after every apply.
-
-See [homelab/terraform/README.md](homelab/terraform/README.md) and [cli/README.md](cli/README.md).
-
-## Turning apps on and off
-
-[provision.toml](provision.toml) decides which apps Flux deploys.
-
-```bash
-./provision homelab apps protect              # once, before the first disable
-./provision homelab apps disable adventurelog
-git commit -am "disable adventurelog" && git push
-```
-
-Namespaces, PVCs and PVs are annotated prune-exempt, so data survives and
-enabling reattaches the same volumes. Flux reads that annotation from the
-cluster, not from git, so `apps protect` has to run before an app leaves the
-source — `apps disable` refuses until it can verify this.
-
-## Adding a stateful app
-
-Copy an existing app with the same shape — Outline (Postgres + Redis) is the
-usual template — and add a `StorageClass` for each new PVC under
-[homelab/kubernetes/infrastructure/nfs-csi/](homelab/kubernetes/infrastructure/nfs-csi/).
-
-That StorageClass's `share` path will not exist on the NAS yet, and the CSI
-driver only creates the `subDir` *inside* an existing share — never the share
-itself. Skip this and the PVC sits `Pending` forever with `mount.nfs: ...
-No such file or directory` in its events. Create the directory once, from
-inside the cluster (the node's IP is what the NAS export allow-lists, not
-this machine's):
-
-```bash
-kubectl run nas-mkdir --restart=Never -n kube-system --image=alpine:3.20 --overrides='{
-  "spec": {"containers": [{
-    "name": "mkdir", "image": "alpine:3.20",
-    "securityContext": {"privileged": true, "capabilities": {"add": ["SYS_ADMIN"]}},
-    "command": ["/bin/sh", "-c"],
-    "args": ["apk add --no-cache nfs-utils >/dev/null && mount -t nfs -o nfsvers=3,nolock <NAS_IP>:<NAS_DATA_PATH> /mnt && mkdir -p /mnt/<app>-<component> && umount /mnt"]
-  }]}
-}'
-kubectl wait --for=jsonpath='{.status.phase}'=Succeeded pod/nas-mkdir -n kube-system --timeout=60s
-kubectl delete pod nas-mkdir -n kube-system
-```
-
-`--image` has to be passed twice — once as its own flag (`kubectl run` requires
-it even when `--overrides` also sets it) and once inside the override.
-
-`kube-system` is the only namespace exempt from this cluster's PodSecurity
-baseline, which is also why the NFS CSI driver's own pods live there — a
-`privileged` pod anywhere else is refused before it starts.
-
-## The sandbox
-
-A disposable Ubuntu VM for testing packages you would rather not run on a
-machine you care about.
-
-```bash
-./provision sandbox template          # once — builds the golden image
-./provision sandbox new               # clone and boot, ~40s
-./provision sandbox payload ./stuff   # attach a directory as a read-only CD
-./provision sandbox offline           # unplug the virtual cable
-./provision sandbox console --serial  # the only way in once offline
-./provision sandbox destroy
-```
-
-`offline` drops the NIC's carrier rather than deleting it, so `online` brings it
-straight back. The payload is an ISO, so the guest cannot write to it and you
-never mount an untrusted filesystem on the host.
-
-Note that cutting the link afterwards does not undo the install — if a package
-is actively malicious, the dangerous moment is `apt install`. Use
-`new --offline` with a `payload` when that matters.
-
-## Rotating secrets
-
-Every secret lives in 1Password. Most rotations need no action at all — see
-[docs/rotate.md](docs/rotate.md) for the per-secret table, including the one
-trap: app admin passwords are only read when the account is first created.
-
-## Recovery
-
-Recovering a wiped node is the same operation as provisioning a new one.
-
-### Prerequisites
-
-A Proxmox host prepared as in [docs/proxmox.md](docs/proxmox.md) — API token,
-storage content types, host SSH.
-- NAS online — all NFS-backed app data lives there
-- 1Password unlocked (`OP_ACCOUNT` or `OP_SERVICE_ACCOUNT_TOKEN`)
-- Proxmox reachable
-
-### On a machine that already has the repo
-
-```bash
-./provision homelab up
-```
-
-### On a bare machine
-
-`homelab/scripts/recover.sh` installs the tooling and clones the repo, then hands off
-to the CLI. It is fetched from the **GitHub mirror**, not Gitea — Gitea runs on
-the cluster being recovered.
-
-```bash
-bash <(curl -s https://raw.githubusercontent.com/d-goncalves/talos-home/master/scripts/recover.sh)
-```
-
-Then:
-
-```bash
-cd ~/talos
-$EDITOR provision.toml            # fill in the <placeholder> values
-export OP_ACCOUNT=my.1password.com
-./provision homelab up
-```
-
-`./provision homelab up` runs preflight, checks the 1Password entries, regenerates the
-generated files, provisions the VM and Talos, writes `~/.kube/config` and
-`~/.talos/config`, seeds the two cluster secrets, hands off to Flux, and backs
-up Terraform state. Every step is idempotent, so re-run it after fixing
-whatever stopped it.
-
-> **Bootstrap ordering.** Flux sources its `GitRepository` from Gitea over SSH,
-> and Gitea runs on this cluster. On a cold cluster Flux cannot sync until the
-> Tailscale operator and Gitea are up. It retries every minute, so this
-> resolves itself — deploy Gitea with `./provision homelab bootstrap gitea` if you want
-> to hurry it along.
-
-### What survives a full node wipe
-
-Everything except Immich's valkey cache. Every PVC that holds anything worth
-keeping is NFS-backed, including the servarr configs, Audiobookshelf metadata
-and Uptime Kuma's database. Check with:
-
-```bash
-kubectl get pvc -A -o custom-columns=SC:.spec.storageClassName,NS:.metadata.namespace,NAME:.metadata.name
-```
-
-Verified by destroying the cluster and rebuilding it: apps came back with their
-data attached and nothing needed reconfiguring.
-
-### What a rebuild does not restore
-
-The Gitea PR webhook (repo → Settings → Webhooks) posts to ntfy so a new PR
-reaches your phone. It lives in Gitea's database, not in this repo, so a Gitea
-rebuild loses it — silently, since nothing fails.
-
-Recreate it: POST to `http://ntfy.ntfy/Down` with ntfy basic auth in the
-authorization header, event `pull_request`, and ntfy templating in the query
-string (`tpl=yes`, plus `title`, `message`, `click`, `priority`).
-`ALLOWED_HOST_LIST` in `homelab/kubernetes/apps/gitea/values.yaml` is what permits
-Gitea to call an in-cluster address at all.
-
-Pi-hole is the second. Its container is deliberately never recreated: the
-tailnet nameserver list points at its Tailscale address, so a rebuilt container
-gets a new identity and every device loses DNS — including away from home. See
-[pihole/README.md](pihole/README.md).
-
-### After the NAS restarts
-
-Mounts use `hard`, so I/O blocks rather than erroring while the NAS is away —
-that protects data, but leaves processes kubelet cannot kill.
-
-```bash
-./provision homelab nas recover
-```
-
-Waits for the NAS, proves it is writable, then restarts only NFS-backed pods
-(16 at present, across 9 namespaces). Cleanest of all is to avoid the situation:
-scale those apps down before a planned NAS reboot.
-
-## Deliberately not doing
-
-Recorded so they stop being rediscovered as open questions.
-
-| | why |
-|---|---|
-| Offsite database backups | Accepted risk. Immich, Outline, AdventureLog and Actual Budget exist only on the NAS. |
-| Talos / Kubernetes upgrades via Renovate | A node reboot is not a dependency bump — see [homelab/docs/upgrading.md](homelab/docs/upgrading.md). |
-| Second node for HA | Waiting on new hardware. One host means every reboot is a full outage. |
-| Immich machine learning | ~2 GB for smart search. Waiting on new hardware. |
-| Pinning the last 7 `:latest` images | Stateless — see [homelab/docs/inventory.md](homelab/docs/inventory.md). The worst a surprise upgrade does is restart them. |
+- [Operations](docs/operations.md): Terraform state and the NAS, turning apps on and off, adding a stateful app, the sandbox, recovery after a wipe or a NAS restart, and what is deliberately not done.
+- [Rotating secrets](docs/rotate.md) and [preparing a Proxmox host](docs/proxmox.md).
+- [Upgrading](homelab/docs/upgrading.md) and [inventory](homelab/docs/inventory.md).
+- [CLI](cli/README.md), [Terraform](homelab/terraform/README.md) and [Pi-hole](pihole/README.md).
